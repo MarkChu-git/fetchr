@@ -1,0 +1,23 @@
+/* Declared after reset/theme imports so product sits above the Stone theme. */
+@layer reset, astryx-base, astryx-theme, product;
+
+/* Placeholder so Vite emits a stylesheet StyleX can append to. */
+:root {
+  --stylex-injection: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  background: light-dark(#f3f3f5, #111015);
+  color: light-dark(#25252a, #f3f3f5);
+}
+
+input,
+textarea,
+select {
+  font-size: 16px;
+}

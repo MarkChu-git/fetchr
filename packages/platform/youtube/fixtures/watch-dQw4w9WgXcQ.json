@@ -1,0 +1,61 @@
+{
+  "responseContext": {
+    "visitorData": "should-not-leak"
+  },
+  "playabilityStatus": {
+    "status": "OK"
+  },
+  "videoDetails": {
+    "videoId": "dQw4w9WgXcQ",
+    "title": "Rick Astley - Never Gonna Give You Up (Official Video)",
+    "shortDescription": "fixture-description-dQw4w9WgXcQ",
+    "author": "Rick Astley",
+    "channelId": "UCuAXFkgsw1L7xaCfnd5JJOw",
+    "isPrivate": false,
+    "thumbnail": {
+      "thumbnails": [
+        {
+          "url": "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg",
+          "width": 480,
+          "height": 360
+        }
+      ]
+    }
+  },
+  "microformat": {
+    "playerMicroformatRenderer": {
+      "publishDate": "2009-10-25T00:00:00+00:00",
+      "ownerProfileUrl": "https://www.youtube.com/channel/UCuAXFkgsw1L7xaCfnd5JJOw"
+    }
+  },
+  "streamingData": {
+    "formats": [
+      {
+        "itag": 18,
+        "url": "https://fixture.googlevideo.invalid/videoplayback?id=dQw4w9WgXcQ&itag=18",
+        "mimeType": "video/mp4; codecs=\"avc1.42001E, mp4a.40.2\"",
+        "bitrate": 335000,
+        "width": 640,
+        "height": 360,
+        "fps": 30
+      }
+    ],
+    "adaptiveFormats": [
+      {
+        "itag": 137,
+        "url": "https://fixture.googlevideo.invalid/videoplayback?id=dQw4w9WgXcQ&itag=137",
+        "mimeType": "video/mp4; codecs=\"avc1.640028\"",
+        "bitrate": 4000000,
+        "width": 1920,
+        "height": 1080,
+        "fps": 30
+      },
+      {
+        "itag": 140,
+        "mimeType": "audio/mp4; codecs=\"mp4a.40.2\"",
+        "bitrate": 128000,
+        "signatureCipher": "s=fixture-cipher&sp=sig&url=https%3A%2F%2Ffixture.googlevideo.invalid%2Faudio"
+      }
+    ]
+  }
+}

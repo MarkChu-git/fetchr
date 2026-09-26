@@ -1,0 +1,46 @@
+{
+  "view": {
+    "code": 0,
+    "message": "0",
+    "ttl": 1,
+    "data": {
+      "bvid": "BV1xx411c7mD",
+      "cid": 1001,
+      "title": "anonymous dash manifest",
+      "pic": "https://cdn.example.test/anonymous/cover.jpg",
+      "pubdate": 1700000000,
+      "owner": {
+        "mid": 1,
+        "name": "anonymous",
+        "face": "https://cdn.example.test/anonymous/avatar.jpg"
+      }
+    }
+  },
+  "playurl": {
+    "code": 0,
+    "message": "0",
+    "ttl": 1,
+    "data": {
+      "quality": 80,
+      "format": "dash",
+      "timelength": 8000,
+      "dash": {
+        "duration": 8,
+        "minBufferTime": 1.5,
+        "video": [
+          {
+            "id": 80,
+            "baseUrl": "https://cdn.example.test/anonymous/index.mpd",
+            "bandwidth": 800000,
+            "mimeType": "application/dash+xml",
+            "codecs": "avc1.640028",
+            "width": 1280,
+            "height": 720,
+            "frameRate": "30"
+          }
+        ],
+        "audio": null
+      }
+    }
+  }
+}

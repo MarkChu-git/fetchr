@@ -1,0 +1,1 @@
+export { kuaishou } from "./extract"

@@ -1,13 +1,16 @@
 {
-  "name": "@fetchr/core",
+  "name": "@fetchr/platform-xiaohongshu",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
   },
+  "scripts": {
+    "test": "bun test"
+  },
   "dependencies": {
-    "@fetchr/fixture": "workspace:*",
+    "@fetchr/core": "workspace:*",
     "effect": "4.0.0-rc.117"
   }
 }

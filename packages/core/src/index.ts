@@ -148,3 +148,6 @@ export interface ExtractorRegistry {
     transport: Transport,
   ) => Effect.Effect<MediaPost, ExtractFailure>
 }
+
+export { extract } from "./extract"
+export { fixtureExtractor } from "@fetchr/fixture"

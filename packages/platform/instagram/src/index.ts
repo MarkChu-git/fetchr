@@ -1,0 +1,1 @@
+export { instagramExtractor } from "./extractor"

@@ -1,0 +1,17 @@
+{
+  "shortcode_media": {
+    "__typename": "GraphVideo",
+    "shortcode": "ABC123",
+    "display_url": "https://cdn.example.test/instagram/ABC123-cover.jpg",
+    "video_url": "https://scontent.cdninstagram.com/v/ABC123.mp4",
+    "is_video": true,
+    "dimensions": { "width": 720, "height": 1280 },
+    "owner": {
+      "username": "fixture_author",
+      "full_name": "Fixture Author"
+    },
+    "edge_media_to_caption": {
+      "edges": [{ "node": { "text": "a public reel" } }]
+    }
+  }
+}

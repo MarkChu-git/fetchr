@@ -1,0 +1,28 @@
+{
+  "__typename": "Tweet",
+  "id_str": "456",
+  "text": "one public video",
+  "created_at": "2024-06-01T12:00:00.000Z",
+  "user": {
+    "screen_name": "video_author"
+  },
+  "video": {
+    "poster": "https://pbs.twimg.com/amplify_video_thumb/456/img/poster.jpg",
+    "variants": [
+      {
+        "type": "application/x-mpegURL",
+        "src": "https://video.twimg.com/ext_tw_video/456/pl/playlist.m3u8"
+      },
+      {
+        "type": "video/mp4",
+        "src": "https://video.twimg.com/ext_tw_video/456/pu/vid/320x568/small.mp4",
+        "bitrate": 256000
+      },
+      {
+        "type": "video/mp4",
+        "src": "https://video.twimg.com/ext_tw_video/456/pu/vid/720x1280/public.mp4",
+        "bitrate": 2176000
+      }
+    ]
+  }
+}

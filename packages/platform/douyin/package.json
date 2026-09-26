@@ -1,5 +1,5 @@
 {
-  "name": "@fetchr/core",
+  "name": "@fetchr/platform-douyin",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -7,7 +7,7 @@
     ".": "./src/index.ts"
   },
   "dependencies": {
-    "@fetchr/fixture": "workspace:*",
+    "@fetchr/core": "workspace:*",
     "effect": "4.0.0-rc.117"
   }
 }

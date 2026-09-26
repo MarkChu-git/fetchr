@@ -1,0 +1,41 @@
+{
+  "name": "@fetchr/web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@astryxdesign/core": "0.6.3",
+    "@astryxdesign/theme-stone": "0.6.3",
+    "@fetchr/core": "workspace:*",
+    "@stylexjs/stylex": "0.19.1",
+    "@tanstack/react-router": "1.170.39",
+    "@tanstack/react-start": "1.168.58",
+    "effect": "4.0.0-rc.117",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
+  },
+  "devDependencies": {
+    "@astryxdesign/build": "0.6.3",
+    "@astryxdesign/cli": "0.6.3",
+    "@babel/core": "7.29.0",
+    "@cloudflare/vite-plugin": "1.60.2",
+    "@stylexjs/babel-plugin": "0.19.1",
+    "@stylexjs/unplugin": "0.19.1",
+    "@types/node": "22.19.15",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.1",
+    "typescript": "5.9.2",
+    "vite": "8.1.3",
+    "wrangler": "4.141.0"
+  },
+  "browserslist": [
+    "last 1 Chrome version"
+  ]
+}
