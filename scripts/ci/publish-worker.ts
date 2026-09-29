@@ -3,7 +3,6 @@
  * versions upload cannot create the first Worker, so that case deploys once.
  * Later publishes check the version URL, then shift all traffic, and roll back when the live check fails.
  */
-import { spawn } from "node:child_process"
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -154,21 +153,18 @@ async function workerExists(accountId: string, token: string): Promise<boolean> 
   throw new Error(`Worker lookup returned HTTP ${response.status}.`)
 }
 
-function runWrangler(args: readonly string[], outputPath: string): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const child = spawn("bunx", ["wrangler", ...args], {
-      stdio: "inherit",
-      env: { ...process.env, WRANGLER_OUTPUT_FILE_PATH: outputPath },
-    })
-    child.on("error", reject)
-    child.on("exit", (code) => {
-      if (code === 0) {
-        resolve()
-        return
-      }
-      reject(new Error(`wrangler ${args.join(" ")} exited ${code ?? "null"}.`))
-    })
+async function runWrangler(args: readonly string[], outputPath: string): Promise<void> {
+  // Bun's node:child_process types omit EventEmitter, so this uses Bun.spawn.
+  const child = Bun.spawn(["bunx", "wrangler", ...args], {
+    stdin: "ignore",
+    stdout: "inherit",
+    stderr: "inherit",
+    env: { ...process.env, WRANGLER_OUTPUT_FILE_PATH: outputPath },
   })
+  const code = await child.exited
+  if (code !== 0) {
+    throw new Error(`wrangler ${args.join(" ")} exited ${code}.`)
+  }
 }
 
 async function waitForHomepage(url: string): Promise<void> {
