@@ -17,6 +17,10 @@ export const Route = createRootRoute({
       { title: "Fetchr" },
     ],
     links: [
+      // SVG stays sharp in the tab. The PNG covers clients that ignore SVG icons.
+      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      { rel: "icon", href: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       {
         rel: "preconnect",
