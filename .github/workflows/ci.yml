@@ -16,17 +16,46 @@ jobs:
   verify:
     name: verify
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      # dependency-review reads the pull request diff.
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Secret scanning looks through history, not only the latest commit.
+          fetch-depth: 0
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.2
       - name: Install
         run: bun install --frozen-lockfile
+      - name: Lint
+        run: bun run lint
       - name: Typecheck
         run: bun run typecheck
       - name: Test
         run: bun test
       - name: Build the Worker
         run: bun run build
+      - name: Audit dependencies
+        # miniflare pins undici 7.29.0, which still has an open moderate advisory.
+        # High and critical advisories fail the job.
+        run: bun audit --audit-level=high
+      - name: Install scanners
+        run: |
+          bash scripts/ci/install-pinned-tools.sh "${{ runner.temp }}/ci-tools"
+      - name: Lint shell scripts
+        run: shellcheck scripts/ci/install-pinned-tools.sh
+      - name: Scan for secrets
+        run: |
+          "${{ runner.temp }}/ci-tools/gitleaks" detect --source . --redact --no-banner --exit-code 1
+      - name: Lint workflows
+        run: |
+          "${{ runner.temp }}/ci-tools/actionlint" -color
+      - name: Review dependency changes
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high

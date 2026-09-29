@@ -16,6 +16,13 @@ const headers: Readonly<Record<string, string>> = {
   "User-Agent": "fetchr",
 }
 
+function flipCharacter(value: string, index: number): string {
+  const current = value[index]
+  if (current === undefined) return value
+  const replacement = current === "A" ? "B" : "A"
+  return value.slice(0, index) + replacement + value.slice(index + 1)
+}
+
 function signToken(overrides?: {
   readonly url?: string
   readonly headers?: Readonly<Record<string, string>>
@@ -205,17 +212,11 @@ describe("proxy token", () => {
   test("rejects a tampered payload or signature", async () => {
     const token = await signToken()
     const dot = token.indexOf(".")
-    const flip = (value: string, index: number) => {
-      const current = value[index]
-      if (current === undefined) return value
-      const replacement = current === "A" ? "B" : "A"
-      return value.slice(0, index) + replacement + value.slice(index + 1)
-    }
     await expect(
-      verify({ token: flip(token, 0), now: issuedAt, secret }),
+      verify({ token: flipCharacter(token, 0), now: issuedAt, secret }),
     ).rejects.toMatchObject({ code: "invalid_token" })
     await expect(
-      verify({ token: flip(token, dot + 1), now: issuedAt, secret }),
+      verify({ token: flipCharacter(token, dot + 1), now: issuedAt, secret }),
     ).rejects.toMatchObject({ code: "invalid_token" })
   })
 

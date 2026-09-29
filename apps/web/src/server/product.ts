@@ -250,6 +250,8 @@ export async function openProxyDownload(
       return new Response("上游跳转被拒绝", { status: 403 })
     }
     currentUrl = next.toString()
+    // The next request exists only after this response supplies a Location.
+    // oxlint-disable-next-line no-await-in-loop
     upstream = await fetchImpl(currentUrl, {
       headers: headersForFetch,
       redirect: "manual",

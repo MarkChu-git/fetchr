@@ -141,7 +141,7 @@ function parseIpv6(input: string): readonly number[] | undefined {
   if (rightSide === undefined) return undefined
   const right = parseIpv6Side(rightSide)
   if (!right || left.length + right.length > 7) return undefined
-  const zeros = new Array<number>(8 - left.length - right.length).fill(0)
+  const zeros = Array.from({ length: 8 - left.length - right.length }, () => 0)
   return [...left, ...zeros, ...right]
 }
 
@@ -172,6 +172,8 @@ function isBlockedHostname(hostname: string): boolean {
 }
 
 export function assertPublicHttpUrl(input: string): URL {
+  // The class is the ASCII controls that must never reach the upstream fetch.
+  // oxlint-disable-next-line no-control-regex
   if (/[\u0000-\u001F\u007F]/.test(input)) {
     throw new ProxyTokenError("forbidden_target", "upstream URL is not public http(s)")
   }

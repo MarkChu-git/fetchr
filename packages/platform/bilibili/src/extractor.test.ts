@@ -78,10 +78,12 @@ async function extract(fixture: {
 
 const originalFetch = globalThis.fetch
 
+function rejectNetwork(): Promise<never> {
+  return Promise.reject(new Error("bilibili tests must not use the network"))
+}
+
 beforeEach(() => {
-  const blocked = () =>
-    Promise.reject(new Error("bilibili tests must not use the network"))
-  globalThis.fetch = blocked as unknown as typeof fetch
+  globalThis.fetch = rejectNetwork as unknown as typeof fetch
 })
 
 afterEach(() => {

@@ -25,39 +25,14 @@ jobs:
           bun-version: 1.4.2
       - name: Install
         run: bun install --frozen-lockfile
-      - name: Build and deploy the Worker
+      - name: Build the Worker
         working-directory: apps/web
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: |
-          bun run build
-          bunx wrangler deploy | tee "$RUNNER_TEMP/wrangler-deploy.txt"
-      - name: Store the proxy secret
+        run: bun run build
+      - name: Upload, check, and publish
         working-directory: apps/web
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           FETCHR_PROXY_SECRET: ${{ secrets.FETCHR_PROXY_SECRET }}
         run: |
-          if [ "${#FETCHR_PROXY_SECRET}" -lt 16 ]; then
-            echo "FETCHR_PROXY_SECRET must be at least 16 characters."
-            exit 1
-          fi
-          printf '%s' "$FETCHR_PROXY_SECRET" | bunx wrangler secret put FETCHR_PROXY_SECRET
-      - name: Smoke-check the homepage
-        run: |
-          # The product UI is Chinese. The paste field label is the smoke signal.
-          url="$(grep -oE 'https://[A-Za-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/wrangler-deploy.txt" | head -n 1)"
-          if [ -z "$url" ]; then
-            echo "Deploy did not print a workers.dev URL."
-            exit 1
-          fi
-          for _ in 1 2 3 4 5 6; do
-            if curl -fsS --max-time 20 "$url" | grep -q '粘贴链接'; then
-              exit 0
-            fi
-            sleep 5
-          done
-          echo "The homepage did not contain the paste label."
-          exit 1
+          bun "${{ github.workspace }}/scripts/ci/publish-worker.ts"

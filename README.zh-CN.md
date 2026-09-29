@@ -52,7 +52,7 @@ bun run --cwd apps/web dev
 
 打开 http://127.0.0.1:5174/。
 
-`bun run typecheck` 检查类型。`bun test` 运行测试。`bun run build` 构建 Worker。
+`bun run lint` 运行 oxlint。`bun run typecheck` 检查类型。`bun test` 运行测试。`bun run build` 构建 Worker。
 
 ## 配置
 
@@ -64,7 +64,7 @@ bun run --cwd apps/web dev
 
 ## 部署
 
-推送到 `main` 会构建 `apps/web` 并执行 `wrangler deploy`。这次发布会换掉正在运行的 Worker。在 `apps/web` 里回滚：
+推送到 `main` 会构建 `apps/web` 并发布 Worker。Worker 已经存在之后，后续推送会先检查新版本，再替换正在运行的版本。在 `apps/web` 里回滚：
 
 ```sh
 bunx wrangler rollback

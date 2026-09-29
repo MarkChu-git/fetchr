@@ -52,7 +52,7 @@ bun run --cwd apps/web dev
 
 Open http://127.0.0.1:5174/.
 
-`bun run typecheck` checks types. `bun test` runs the tests. `bun run build` builds the Worker.
+`bun run lint` runs oxlint. `bun run typecheck` checks types. `bun test` runs the tests. `bun run build` builds the Worker.
 
 ## Configuration
 
@@ -64,7 +64,7 @@ Set `FETCHR_PROXY_SECRET` so production can sign download URLs. Fetchr refuses t
 
 ## Deploy
 
-A push to `main` builds `apps/web` and runs `wrangler deploy`. The publish replaces the live Worker. From `apps/web`, roll back with:
+A push to `main` builds `apps/web` and publishes the Worker. Once the Worker exists, a later push checks the new version before it replaces the live one. From `apps/web`, roll back with:
 
 ```sh
 bunx wrangler rollback

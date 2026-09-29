@@ -7,7 +7,8 @@ import type {
   Transport,
 } from "./index"
 
-const invisible = /[\u200b\u200c\u200d\ufeff]/g
+// U+200D is a joiner. A character-class literal sits it against the next code point and the lint treats that as one sequence. These four marks are independent.
+const invisible = new RegExp(`[${String.fromCodePoint(0x200b, 0x200c, 0x200d, 0xfeff)}]`, "gu")
 
 /**
  * Share text wraps a short link inside a sentence, so the whole paste is not a URL.
@@ -17,7 +18,7 @@ const invisible = /[\u200b\u200c\u200d\ufeff]/g
 function urlFromPaste(input: string): string | undefined {
   const match = input
     .replace(invisible, "")
-    .match(/https?:\/\/[A-Za-z0-9\-._~:/?#\[\]@!$&'()*+,;=%]+/i)
+    .match(/https?:\/\/[A-Za-z0-9\-._~:/?#[\]@!$&'()*+,;=%]+/i)
   const found = match?.[0]
   if (found === undefined) return undefined
   return found.replace(/[)）,，。、；;！!？?】》>"'`]+$/u, "")

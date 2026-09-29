@@ -73,6 +73,19 @@ test("extracts the URL embedded in share text", async () => {
   expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
 })
 
+test("strips invisible characters out of a pasted URL", async () => {
+  const post = await Effect.runPromise(
+    extract(
+      `https://fixture.test/video/${String.fromCodePoint(0x200b, 0x200d)}demo`,
+      transport,
+      [fixtureExtractor],
+    ),
+  )
+
+  expect(post.id).toBe("demo")
+  expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
+})
+
 test("stops a pasted URL before Chinese that is glued to it", async () => {
   const post = await Effect.runPromise(
     extract(

@@ -11,38 +11,6 @@ import { isYoutubeVideoId, matchYoutubeUrl, videoIdFromUrl } from "./match.ts"
 import { mediaPostFromPlayer } from "./parser.ts"
 import { playerResponseJsonSchema } from "./schema.ts"
 
-interface YtFormat {
-  readonly url?: string
-  readonly mime_type?: string
-  readonly has_audio?: boolean
-  readonly has_video?: boolean
-  readonly width?: number
-  readonly height?: number
-}
-
-interface YtInfo {
-  readonly basic_info?: {
-    readonly title?: string
-    readonly author?: string
-    readonly channel_id?: string
-    readonly short_description?: string
-  }
-  readonly playability_status?: { readonly status?: string; readonly reason?: string }
-  readonly streaming_data?: {
-    readonly formats?: readonly YtFormat[]
-    readonly adaptive_formats?: readonly YtFormat[]
-  }
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null
-}
-
-function asInfo(value: unknown): YtInfo {
-  if (!isRecord(value)) return {}
-  return value as YtInfo
-}
-
 function failure(code: ExtractFailure["code"], message: string): ExtractFailure {
   return { code, message }
 }

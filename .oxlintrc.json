@@ -1,0 +1,51 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "plugins": ["typescript", "react", "import", "unicorn", "oxc"],
+  "categories": {
+    "correctness": "error",
+    "suspicious": "error",
+    "perf": "error"
+  },
+  "env": {
+    "browser": true,
+    "node": true
+  },
+  "globals": {
+    "Bun": "readonly"
+  },
+  "rules": {
+    // React 19 compiles JSX without a React identifier in scope.
+    "react/react-in-jsx-scope": "off",
+    // Effect results use _tag. Page JSON uses __typename, __ref, and __DEFAULT_SCOPE__.
+    "no-underscore-dangle": [
+      "error",
+      {
+        "allow": ["_tag", "__typename", "__ref", "__DEFAULT_SCOPE__"]
+      }
+    ],
+    "import/no-unassigned-import": ["error", { "allow": ["**/*.css"] }],
+    // Worker postMessage takes a transfer list, not a Window targetOrigin.
+    "unicorn/require-post-message-target-origin": "off",
+    "unicorn/prefer-add-event-listener": "off",
+    // The typecheck target is ES2022, which has no Array#toSorted. Flagged sorts already use a fresh array.
+    "unicorn/no-array-sort": "off"
+  },
+  "overrides": [
+    {
+      "files": ["**/*.test.ts"],
+      "rules": {
+        "no-await-in-loop": "off"
+      }
+    }
+  ],
+  "options": {
+    "denyWarnings": true
+  },
+  "ignorePatterns": [
+    "dist/**",
+    "coverage/**",
+    "graphify-out/**",
+    ".gitnexus/**",
+    "**/*.gen.ts"
+  ]
+}

@@ -117,16 +117,17 @@ test("uses direct delivery when the cdn does not need a referer", async () => {
 })
 
 function extract(url: string, html: string) {
-  const page = new URL(url)
-  const id = page.pathname.split("/").filter((part) => part.length > 0).at(-1)
+  const address = new URL(url)
+  const segments = address.pathname.split("/").filter((part) => part.length > 0)
+  const id = segments.at(-1)
   const resource: CanonicalResource = {
     platform: "kuaishou",
-    url: page,
+    url: address,
     ...(id === undefined ? {} : { id }),
   }
   const transport: Transport = {
     request: (input) => {
-      expect(input.url).toBe(page.href)
+      expect(input.url).toBe(address.href)
       return Effect.succeed(new Response(html, { status: 200 }))
     },
   }

@@ -95,6 +95,8 @@ export async function sealPost(
 ): Promise<MediaPost> {
   const media: MediaAsset[] = []
   for (const asset of post.media) {
+    // Stop on the first failure and keep the returned assets in their original order.
+    // oxlint-disable-next-line no-await-in-loop
     media.push(await sealAsset(asset, post, secret, now))
   }
   return { ...post, media }
