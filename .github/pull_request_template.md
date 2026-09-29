@@ -1,3 +1,5 @@
+Branch names look like `feat/public-media`. Merges into `main` are squash-only and have to pass CI.
+
 ## What
 
 Brief description of what this PR does.

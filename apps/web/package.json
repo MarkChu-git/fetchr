@@ -7,7 +7,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "deploy": "vite build && wrangler deploy"
   },
   "dependencies": {
     "@astryxdesign/core": "0.6.3",
@@ -47,5 +48,15 @@
   },
   "browserslist": [
     "last 1 Chrome version"
-  ]
+  ],
+  "cloudflare": {
+    "bindings": {
+      "FETCHR_PROXY_SECRET": {
+        "description": "HMAC key for signed download URLs. Generate one with `openssl rand -hex 32`. Use at least 16 characters, and a different value for every deploy. Leave the example file empty."
+      },
+      "TURNSTILE_SECRET": {
+        "description": "Optional Cloudflare Turnstile secret. Leave it empty to refuse requests that go over the rate limit."
+      }
+    }
+  }
 }
