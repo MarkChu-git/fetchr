@@ -32,7 +32,12 @@ const videoPost: MediaPost = {
       width: 720,
       height: 1280,
       thumbnail: "https://cdn.fixture.example/video-cover.jpg",
-      delivery: { type: "proxy", token: "pending" },
+      delivery: {
+        type: "proxy",
+        token: "pending",
+        upstreamUrl: "https://cdn.fixture.example/video.mp4",
+        upstreamHeaders: { Referer: "https://www.xiaohongshu.com/" },
+      },
     },
   ],
 }
@@ -58,7 +63,12 @@ const imagePost: MediaPost = {
       id: "image123-image-2",
       width: 1080,
       height: 1440,
-      delivery: { type: "proxy", token: "pending" },
+      delivery: {
+        type: "proxy",
+        token: "pending",
+        upstreamUrl: "https://cdn.fixture.example/image-2.jpg",
+        upstreamHeaders: { Referer: "https://www.xiaohongshu.com/" },
+      },
     },
   ],
 }
@@ -166,7 +176,6 @@ test("video embedded state becomes one proxied video", async () => {
     expect(result.value).toEqual(videoPost)
     expect(result.value.media).toHaveLength(1)
     expect(result.value.media[0]?.type).toBe("video")
-    expect(JSON.stringify(result.value)).not.toContain("video.mp4")
     assertNoPlatformWords(result.value)
   }
 })
@@ -184,7 +193,6 @@ test("image embedded state becomes two images with direct and proxy delivery", a
   if (result.ok) {
     expect(result.value).toEqual(imagePost)
     expect(result.value.media.map((asset) => asset.type)).toEqual(["image", "image"])
-    expect(JSON.stringify(result.value)).not.toContain("image-2.jpg")
     expect(JSON.stringify(result.value)).toContain("image-1.jpg")
     assertNoPlatformWords(result.value)
   }

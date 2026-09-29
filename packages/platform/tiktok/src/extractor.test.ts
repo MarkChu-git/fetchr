@@ -78,7 +78,12 @@ describe("tiktokExtractor.extract", () => {
           thumbnail: "https://p16.example.test/cover.jpg",
           width: 576,
           height: 1024,
-          delivery: { type: "proxy", token: "pending" },
+          delivery: {
+            type: "proxy",
+            token: "pending",
+            upstreamUrl: "https://v16.example.test/play.mp4",
+            upstreamHeaders: { Referer: "https://www.tiktok.com/" },
+          },
         },
       ],
     })

@@ -1,9 +1,10 @@
 import { Effect } from "effect"
-import type {
-  Author,
-  ExtractFailure,
-  MediaPost,
-  VideoAsset,
+import {
+  unsignedProxy,
+  type Author,
+  type ExtractFailure,
+  type MediaPost,
+  type VideoAsset,
 } from "@fetchr/core"
 import type { PlayerFormat, PlayerResponse } from "./schema.ts"
 
@@ -22,6 +23,32 @@ function isHttpUrl(value: string): boolean {
 
 function hasDrm(format: PlayerFormat): boolean {
   return format.drmFamilies !== undefined && format.drmFamilies.length > 0
+}
+
+function isBareUrl(
+  format: PlayerFormat,
+): format is PlayerFormat & { readonly url: string } {
+  return format.url !== undefined && isHttpUrl(format.url) && !hasDrm(format)
+}
+
+function muxFromAdaptive(
+  adaptive: readonly PlayerFormat[],
+): Extract<VideoAsset["delivery"], { type: "mux" }> | undefined {
+  const video = adaptive
+    .filter(isBareUrl)
+    .filter((format) => format.mimeType?.startsWith("video/") === true)
+    .sort(byQuality)[0]
+  const audio = adaptive
+    .filter(isBareUrl)
+    .filter((format) => format.mimeType?.startsWith("audio/") === true)
+    .sort(byQuality)[0]
+  if (video === undefined || audio === undefined) return undefined
+  return {
+    type: "mux",
+    outputContainer: "mp4",
+    video: { url: video.url },
+    audio: { url: audio.url },
+  }
 }
 
 function isProgressive(
@@ -134,7 +161,8 @@ function videoAsset(
   return {
     type: "video",
     id,
-    delivery: { type: "direct", url: format.url },
+    // googlevideo does not grant the page CORS. A cross-origin download attribute is ignored, so proxy the file instead.
+    delivery: unsignedProxy(format.url),
     ...(format.width === undefined ? {} : { width: format.width }),
     ...(format.height === undefined ? {} : { height: format.height }),
     ...(format.fps === undefined ? {} : { fps: format.fps }),
@@ -166,7 +194,8 @@ export function mediaPostFromPlayer(
   const formats = player.streamingData?.formats ?? []
   const adaptive = player.streamingData?.adaptiveFormats ?? []
   const chosen = formats.filter(isProgressive).sort(byQuality)[0]
-  if (chosen === undefined) {
+  const split = chosen === undefined ? muxFromAdaptive(adaptive) : undefined
+  if (chosen === undefined && split === undefined) {
     if ([...formats, ...adaptive].some(hasDrm)) {
       return Effect.fail(
         failure("DRM_PROTECTED", "This video is protected by DRM."),
@@ -200,7 +229,17 @@ export function mediaPostFromPlayer(
     platform: "youtube",
     id,
     canonicalUrl: `https://www.youtube.com/watch?v=${id}`,
-    media: [videoAsset(id, chosen, thumbnail)],
+    media: [
+      chosen !== undefined
+        ? videoAsset(id, chosen, thumbnail)
+        : {
+            type: "video" as const,
+            id: `${id}-mux`,
+            // When there is no complete file, picture and audio stay separate and the client muxes them.
+            delivery: split!,
+            ...(thumbnail === undefined ? {} : { thumbnail }),
+          },
+    ],
     ...(author === undefined ? {} : { author }),
     ...(details?.title === undefined ? {} : { title: details.title }),
     ...(details?.shortDescription === undefined

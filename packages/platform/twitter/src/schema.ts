@@ -50,9 +50,10 @@ const Tweet = Schema.Struct({
   ),
 })
 
+// A protected account is Protected. A post that requires a login is NsfwLoggedOut. They are different failures.
 const ProtectedTweet = Schema.Struct({
   __typename: Schema.Literal("TweetUnavailable"),
-  reason: Schema.Literal("Protected"),
+  reason: Schema.String,
 })
 
 export const SyndicationResult = Schema.Union([ProtectedTweet, Tweet])

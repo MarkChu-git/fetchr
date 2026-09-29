@@ -188,7 +188,12 @@ describe("instagram extractor", () => {
           id: "ABC123:2",
           width: 1080,
           height: 1440,
-          delivery: { type: "proxy", token: "pending" },
+          delivery: {
+            type: "proxy",
+            token: "pending",
+            upstreamUrl: "https://scontent.xx.fbcdn.net/v/ABC123-2.jpg",
+            upstreamHeaders: { Referer: "https://www.instagram.com/" },
+          },
         },
       ],
     })
@@ -216,7 +221,12 @@ describe("instagram extractor", () => {
           width: 720,
           height: 1280,
           thumbnail: "https://cdn.example.test/instagram/ABC123-cover.jpg",
-          delivery: { type: "proxy", token: "pending" },
+          delivery: {
+            type: "proxy",
+            token: "pending",
+            upstreamUrl: "https://scontent.cdninstagram.com/v/ABC123.mp4",
+            upstreamHeaders: { Referer: "https://www.instagram.com/" },
+          },
         },
       ],
     }

@@ -1,4 +1,4 @@
-/* Declared after reset/theme imports so product sits above the Stone theme. */
+/* The real layer order is the first style in the document head. Declared again here so a production build cannot drop it. */
 @layer reset, astryx-base, astryx-theme, product;
 
 /* Placeholder so Vite emits a stylesheet StyleX can append to. */

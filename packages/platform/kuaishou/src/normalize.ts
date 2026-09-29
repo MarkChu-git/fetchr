@@ -1,11 +1,12 @@
-import type {
-  Author,
-  CanonicalResource,
-  Delivery,
-  ImageAsset,
-  MediaAsset,
-  MediaPost,
-  VideoAsset,
+import {
+  unsignedProxy,
+  type Author,
+  type CanonicalResource,
+  type Delivery,
+  type ImageAsset,
+  type MediaAsset,
+  type MediaPost,
+  type VideoAsset,
 } from "@fetchr/core"
 import { Option, Schema } from "effect"
 import {
@@ -444,7 +445,10 @@ function firstCdnUrl(
 }
 
 function deliveryFor(url: string): Delivery {
-  if (needsReferer(url)) return { type: "proxy", token: "pending" }
+  if (needsReferer(url)) {
+    // The Kuaishou CDN expects its own Referer. Keep the upstream URL here. It is signed into a token before the page sees it.
+    return unsignedProxy(url, { Referer: "https://www.kuaishou.com/" })
+  }
   return { type: "direct", url }
 }
 

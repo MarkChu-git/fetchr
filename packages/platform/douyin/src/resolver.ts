@@ -5,25 +5,45 @@ import type {
 } from "@fetchr/core"
 import { Effect } from "effect"
 import { failure } from "./failure"
-import { sign } from "./signer"
 
 const shortHost = "v.douyin.com"
-const videoHosts = new Set(["www.douyin.com", "douyin.com"])
+const videoHosts = new Set([
+  "www.douyin.com",
+  "douyin.com",
+  "m.douyin.com",
+  "www.iesdouyin.com",
+  "iesdouyin.com",
+])
 
 function segments(url: URL): readonly string[] {
   return url.pathname.split("/").filter((segment) => segment.length > 0)
 }
 
-function videoId(url: URL): string | undefined {
+function digits(value: string | undefined): string | undefined {
+  if (value === undefined || !/^\d+$/.test(value)) return undefined
+  return value
+}
+
+type WorkKind = "video" | "note"
+
+function workId(url: URL): { readonly id: string; readonly kind: WorkKind } | undefined {
   if (url.protocol !== "https:") return undefined
   if (!videoHosts.has(url.hostname)) return undefined
   const parts = segments(url)
-  const id = parts[1]
-  if (parts.length !== 2 || parts[0] !== "video" || id === undefined) {
-    return undefined
+  // The first hop of a short link often stops on iesdouyin. Video is /share/video/{id}. An image note is /share/slides/{id} or /share/note/{id}.
+  // Image notes do not belong in the video feed. The canonical URL has to be /note/{id}, or the later step never asks for the images.
+  if (parts.length === 2 && (parts[0] === "video" || parts[0] === "note")) {
+    const id = digits(parts[1])
+    if (id === undefined) return undefined
+    return { id, kind: parts[0] === "note" ? "note" : "video" }
   }
-  if (!/^\d+$/.test(id)) return undefined
-  return id
+  if (parts[0] === "share" && parts.length === 3) {
+    const id = digits(parts[2])
+    if (id === undefined) return undefined
+    if (parts[1] === "video") return { id, kind: "video" }
+    if (parts[1] === "note" || parts[1] === "slides") return { id, kind: "note" }
+  }
+  return undefined
 }
 
 function shortCode(url: URL): string | undefined {
@@ -36,15 +56,33 @@ function shortCode(url: URL): string | undefined {
   return code
 }
 
-export function match(url: URL): boolean {
-  return videoId(url) !== undefined || shortCode(url) !== undefined
+function modalId(url: URL): string | undefined {
+  if (url.protocol !== "https:") return undefined
+  if (!videoHosts.has(url.hostname)) return undefined
+  // A link copied from the website usually stops on /jingxuan?modal_id= or a profile modal_id, with no /video/ in the path. That number is the work id.
+  return digits(url.searchParams.get("modal_id") ?? undefined)
 }
 
-function canonicalVideo(id: string): CanonicalResource {
+function modalWork(url: URL): { readonly id: string; readonly kind: WorkKind } | undefined {
+  const id = modalId(url)
+  if (id === undefined) return undefined
+  // The parameter itself does not say video or image note. Enter the feed as a video first. When the feed has no such item, the extractor asks for an image note.
+  return { id, kind: "video" }
+}
+
+export function match(url: URL): boolean {
+  return workId(url) !== undefined || shortCode(url) !== undefined || modalId(url) !== undefined
+}
+
+function canonicalWork(work: {
+  readonly id: string
+  readonly kind: WorkKind
+}): CanonicalResource {
+  const path = work.kind === "note" ? "note" : "video"
   return {
     platform: "douyin",
-    id,
-    url: new URL(`https://www.douyin.com/video/${id}`),
+    id: work.id,
+    url: new URL(`https://www.douyin.com/${path}/${work.id}`),
   }
 }
 
@@ -52,10 +90,10 @@ export function resolveCanonical(
   resource: CanonicalResource,
   transport: Transport,
 ): Effect.Effect<CanonicalResource, ExtractFailure> {
-  const direct = videoId(resource.url)
-  if (direct !== undefined) return Effect.succeed(canonicalVideo(direct))
+  const direct = workId(resource.url) ?? modalWork(resource.url)
+  if (direct !== undefined) return Effect.succeed(canonicalWork(direct))
   if (shortCode(resource.url) === undefined) {
-    return Effect.fail(failure("UNSUPPORTED_URL", "URL is not a Douyin video"))
+    return Effect.fail(failure("UNSUPPORTED_URL", "URL is not a Douyin post"))
   }
   return Effect.gen(function* () {
     const response = yield* transport.request(
@@ -67,23 +105,18 @@ export function resolveCanonical(
         failure("RESOLVE_FAILED", "Douyin short link had no redirect"),
       )
     }
-    const id = videoId(new URL(location, resource.url))
-    if (id === undefined) {
+    const next = new URL(location, resource.url)
+    const work = workId(next) ?? modalWork(next)
+    if (work === undefined) {
       return yield* Effect.fail(
         failure(
           "RESOLVE_FAILED",
-          "Douyin short link did not redirect to a video",
+          "Douyin short link did not redirect to a post",
         ),
       )
     }
-    return canonicalVideo(id)
+    return canonicalWork(work)
   })
 }
 
-export function detailRequest(id: string, timestamp: number): Request {
-  const url = new URL("https://www.douyin.com/aweme/v1/web/aweme/detail/")
-  url.searchParams.set("aweme_id", id)
-  const unsigned = url.toString()
-  url.searchParams.set("fetchr_sign", sign(unsigned, timestamp))
-  return new Request(url)
-}
+

@@ -1,11 +1,12 @@
-import type {
-  Author,
-  CanonicalResource,
-  Delivery,
-  ExtractFailure,
-  ImageAsset,
-  MediaPost,
-  VideoAsset,
+import {
+  unsignedProxy,
+  type Author,
+  type CanonicalResource,
+  type Delivery,
+  type ExtractFailure,
+  type ImageAsset,
+  type MediaPost,
+  type VideoAsset,
 } from "@fetchr/core"
 import { Effect } from "effect"
 
@@ -14,8 +15,8 @@ import type { CdnFile, EmbeddedState, NoteBody } from "./schema"
 
 const deliveryFor = (file: CdnFile): Delivery => {
   if (file.requiresReferer === true) {
-    // Real proxy tokens are minted by the delivery package. Do not sign here.
-    return { type: "proxy", token: "pending" }
+    // The browser cannot set Xiaohongshu's Referer. Record the upstream here and leave signing to the Worker.
+    return unsignedProxy(file.url, { Referer: "https://www.xiaohongshu.com/" })
   }
   return { type: "direct", url: file.url }
 }

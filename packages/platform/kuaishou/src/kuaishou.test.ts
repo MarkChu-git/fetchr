@@ -49,7 +49,12 @@ test("extracts a short-video fixture into one kuaishou video", async () => {
         container: "mp4",
         bitrate: 1_200_000,
         thumbnail: "https://p1.a.yximgs.com/upic/anon-cover.jpg",
-        delivery: { type: "proxy", token: "pending" },
+        delivery: {
+          type: "proxy",
+          token: "pending",
+          upstreamUrl: "https://v1.kwaicdn.com/ksc1/anon-720.mp4",
+          upstreamHeaders: { Referer: "https://www.kuaishou.com/" },
+        },
       },
     ],
   })
@@ -85,7 +90,12 @@ test("extracts an image fixture into image media", async () => {
         id: "7000000000000000002:1",
         width: 1080,
         height: 1350,
-        delivery: { type: "proxy", token: "pending" },
+        delivery: {
+          type: "proxy",
+          token: "pending",
+          upstreamUrl: "https://tx2.a.yximgs.com/ufile/atlas/anon_1.jpg",
+          upstreamHeaders: { Referer: "https://www.kuaishou.com/" },
+        },
       },
     ],
   })

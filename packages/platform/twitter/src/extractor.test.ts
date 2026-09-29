@@ -4,6 +4,7 @@ import { Cause, Effect, Exit } from "effect"
 import { twitterExtractor } from "@fetchr/platform-twitter"
 import authorizedVideo from "../fixtures/authorized-video.json" with { type: "json" }
 import photo from "../fixtures/photo.json" with { type: "json" }
+import loginTweet from "../fixtures/login.json" with { type: "json" }
 import protectedTweet from "../fixtures/protected.json" with { type: "json" }
 import video from "../fixtures/video.json" with { type: "json" }
 
@@ -147,6 +148,15 @@ describe("twitterExtractor.extract", () => {
     expect(failure.message).toBe("This post is from a protected account.")
   })
 
+  test("returns LOGIN_REQUIRED when the post is only visible after login", async () => {
+    const { failure } = await extractError(
+      status("https://x.com/hidden/status/790", "790"),
+      loginTweet,
+    )
+
+    expect(failure.code).toBe("LOGIN_REQUIRED")
+  })
+
   test("uses a pending proxy token when media needs a cookie or authorization header", async () => {
     const { post, requests } = await extractPost(
       status("https://x.com/locked_media/status/321", "321"),
@@ -157,10 +167,15 @@ describe("twitterExtractor.extract", () => {
     expect(post.media).toHaveLength(1)
     expect(post.media[0]?.type).toBe("video")
     if (post.media[0]?.type !== "video") throw new Error("expected a video")
-    expect(post.media[0].delivery).toEqual({ type: "proxy", token: "pending" })
+    expect(post.media[0].delivery).toEqual({
+      type: "proxy",
+      token: "pending",
+      upstreamUrl:
+        "https://video.twimg.com/ext_tw_video/321/pu/vid/720x720/locked.mp4",
+      upstreamHeaders: { Referer: "https://x.com/" },
+    })
     const encoded = JSON.stringify(post)
     expect(encoded).not.toContain("auth_token=secret")
     expect(encoded).not.toContain("Bearer guest")
-    expect(encoded).not.toContain("https://video.twimg.com/ext_tw_video/321/pu/vid/720x720/locked.mp4")
   })
 })

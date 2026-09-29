@@ -70,9 +70,21 @@ export const twitterExtractor: Extractor = {
         ),
       )
       if (decoded.__typename === "TweetUnavailable") {
+        if (decoded.reason === "NsfwLoggedOut") {
+          return yield* Effect.fail<ExtractFailure>({
+            code: "LOGIN_REQUIRED",
+            message: "This post is visible after login.",
+          })
+        }
+        if (decoded.reason === "Protected") {
+          return yield* Effect.fail<ExtractFailure>({
+            code: "PRIVATE_MEDIA",
+            message: "This post is from a protected account.",
+          })
+        }
         return yield* Effect.fail<ExtractFailure>({
-          code: "PRIVATE_MEDIA",
-          message: "This post is from a protected account.",
+          code: "MEDIA_NOT_FOUND",
+          message: "This post is not available.",
         })
       }
       return postFrom(decoded, resource)

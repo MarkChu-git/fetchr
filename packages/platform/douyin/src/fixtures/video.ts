@@ -18,7 +18,10 @@ export const videoFixture = {
         url_list: ["https://cdn.example/covers/clip.jpg"],
       },
       play_addr: {
-        url_list: ["https://cdn.example/media/clip.mp4"],
+        url_list: [
+          "https://www.douyin.com/aweme/v1/playwm/?video_id=clip",
+          "https://cdn.example/media/clip.mp4",
+        ],
       },
     },
     private_status: 0,

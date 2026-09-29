@@ -3,6 +3,7 @@ import type {
   Delivery,
   ExtractFailure,
   MediaPost,
+  MediaSource,
   VideoAsset,
 } from "@fetchr/core"
 import { notFound } from "./http"
@@ -64,6 +65,17 @@ function bestStream(
     winnerBandwidth = bandwidth
   }
   return winner
+}
+
+/**
+ * A browser request to these CDNs sends this site's Referer, and Akamai answers 403.
+ * Put the header on the source so signing rewrites the URL to a same-origin /download and the browser never touches the CDN.
+ * A Worker fetch with no User-Agent is also answered 403. The download entry fills that in.
+ */
+const bilibiliHeaders = { Referer: "https://www.bilibili.com/" } as const
+
+function bilibiliSource(url: string): MediaSource {
+  return { url, headers: bilibiliHeaders }
 }
 
 function fpsFrom(frameRate: string | undefined): number | undefined {
@@ -182,8 +194,8 @@ export function mediaPostFrom(
       {
         type: "mux",
         outputContainer: "mp4",
-        video: { url: video.url },
-        audio: { url: audio.url },
+        video: bilibiliSource(video.url),
+        audio: bilibiliSource(audio.url),
       },
       video,
     )
@@ -202,7 +214,13 @@ export function mediaPostFrom(
 
   const file = progressiveUrl(play)
   if (file !== undefined) {
-    return assemble(bvid, view, { type: "direct", url: file }, undefined)
+    // A complete file still cannot go straight to the browser. The Referer would stay this site's, and the CDN would refuse it.
+    return assemble(
+      bvid,
+      view,
+      { type: "direct", url: file, headers: bilibiliHeaders },
+      undefined,
+    )
   }
 
   return notFound

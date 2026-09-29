@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiExtractRouteImport } from './routes/api/extract'
+import { Route as DownloadTokenRouteImport } from './routes/download/$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiExtractRoute = ApiExtractRouteImport.update({
+  id: '/api/extract',
+  path: '/api/extract',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DownloadTokenRoute = DownloadTokenRouteImport.update({
+  id: '/download/$token',
+  path: '/download/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/extract': typeof ApiExtractRoute
+  '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/extract': typeof ApiExtractRoute
+  '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/extract': typeof ApiExtractRoute
+  '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/extract' | '/download/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/extract' | '/download/$token'
+  id: '__root__' | '/' | '/api/extract' | '/download/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiExtractRoute: typeof ApiExtractRoute
+  DownloadTokenRoute: typeof DownloadTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/extract': {
+      id: '/api/extract'
+      path: '/api/extract'
+      fullPath: '/api/extract'
+      preLoaderRoute: typeof ApiExtractRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/download/$token': {
+      id: '/download/$token'
+      path: '/download/$token'
+      fullPath: '/download/$token'
+      preLoaderRoute: typeof DownloadTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiExtractRoute: ApiExtractRoute,
+  DownloadTokenRoute: DownloadTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

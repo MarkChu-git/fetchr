@@ -19,6 +19,30 @@ const videoPost: MediaPost = {
   ],
 }
 
+/**
+ * Picture and audio are two small same-origin files. The browser can read the bytes. Muxing runs in a worker behind the page.
+ * The URLs are not a platform CDN.
+ */
+const muxPost: MediaPost = {
+  platform: "fixture",
+  id: "mux",
+  canonicalUrl: "https://fixture.test/mux/demo",
+  author: { name: "Fixture" },
+  title: "分开的画面和声音",
+  media: [
+    {
+      type: "video",
+      id: "mux",
+      delivery: {
+        type: "mux",
+        outputContainer: "mp4",
+        video: { url: "/mux-fixture/video.mp4" },
+        audio: { url: "/mux-fixture/audio.m4a" },
+      },
+    },
+  ],
+}
+
 const albumPost: MediaPost = {
   platform: "fixture",
   id: "album",
@@ -49,6 +73,7 @@ function postFor(url: URL): MediaPost | undefined {
   }
   if (url.pathname === "/video/demo") return videoPost
   if (url.pathname === "/image/album") return albumPost
+  if (url.pathname === "/mux/demo") return muxPost
   return undefined
 }
 

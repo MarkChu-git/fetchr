@@ -36,6 +36,8 @@ function RootDocument({ children }: { readonly children: ReactNode }) {
   return (
     <html lang="zh-CN">
       <head>
+        {/* Must be the first CSS in the document. StyleX opens astryx-base first. If reset opens after that, it covers the buttons and inputs. */}
+        <style>{`@layer reset, astryx-base, astryx-theme, product;`}</style>
         <HeadContent />
         {import.meta.env.DEV ? (
           <link rel="stylesheet" href="/virtual:stylex.css" />

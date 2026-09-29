@@ -15,6 +15,16 @@ const resource: CanonicalResource = {
   url: new URL(`https://www.bilibili.com/video/${bvid}`),
 }
 
+function watchHtml(view: unknown): string {
+  const envelope = view as { readonly data?: unknown }
+  if (envelope.data === null || envelope.data === undefined) {
+    return "<html><title>missing</title></html>"
+  }
+  return `<html><script>window.__INITIAL_STATE__=${JSON.stringify({
+    videoData: envelope.data,
+  })};</script></html>`
+}
+
 function fixtureTransport(fixture: {
   readonly view: unknown
   readonly playurl: unknown
@@ -22,12 +32,35 @@ function fixtureTransport(fixture: {
   return {
     request(input) {
       const url = new URL(input.url)
-      const body =
-        url.pathname === "/x/web-interface/view" ? fixture.view : fixture.playurl
+      // The view API answers 412. The fixture only provides the watch page and playurl.
+      if (url.pathname === "/x/web-interface/view") {
+        return Effect.fail({
+          code: "SOURCE_UNAVAILABLE",
+          message: "view api must not be called",
+        })
+      }
+      if (url.hostname === "b23.tv") {
+        return Effect.succeed(
+          new Response(null, {
+            status: 302,
+            headers: {
+              location: `https://www.bilibili.com/video/${bvid}`,
+            },
+          }),
+        )
+      }
+      if (url.pathname === "/x/player/playurl") {
+        return Effect.succeed(
+          new Response(JSON.stringify(fixture.playurl), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        )
+      }
       return Effect.succeed(
-        new Response(JSON.stringify(body), {
+        new Response(watchHtml(fixture.view), {
           status: 200,
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "text/html" },
         }),
       )
     },
@@ -101,8 +134,14 @@ describe("bilibiliExtractor.extract", () => {
     expect(asset.delivery).toEqual({
       type: "mux",
       outputContainer: "mp4",
-      video: { url: "https://cdn.example.test/anonymous/video.m4s" },
-      audio: { url: "https://cdn.example.test/anonymous/audio.m4s" },
+      video: {
+        url: "https://cdn.example.test/anonymous/video.m4s",
+        headers: { Referer: "https://www.bilibili.com/" },
+      },
+      audio: {
+        url: "https://cdn.example.test/anonymous/audio.m4s",
+        headers: { Referer: "https://www.bilibili.com/" },
+      },
     })
   })
 
@@ -117,6 +156,7 @@ describe("bilibiliExtractor.extract", () => {
     expect(asset.delivery).toEqual({
       type: "direct",
       url: "https://cdn.example.test/anonymous/progressive.mp4",
+      headers: { Referer: "https://www.bilibili.com/" },
     })
   })
 
@@ -140,5 +180,25 @@ describe("bilibiliExtractor.extract", () => {
     expect(Result.isFailure(result)).toBe(true)
     if (Result.isSuccess(result)) return
     expect(result.failure.code).toBe("MEDIA_NOT_FOUND")
+  })
+
+  test("a b23 short link resolves to the same video", async () => {
+    const result = await Effect.runPromise(
+      Effect.result(
+        bilibiliExtractor.extract(
+          {
+            platform: "bilibili",
+            url: new URL("https://b23.tv/abc123"),
+          },
+          fixtureTransport(separateFixture),
+        ),
+      ),
+    )
+    expect(Result.isSuccess(result)).toBe(true)
+    if (Result.isFailure(result)) return
+    expect(result.success.id).toBe(bvid)
+    expect(result.success.canonicalUrl).toBe(
+      "https://www.bilibili.com/video/BV1xx411c7mD",
+    )
   })
 })

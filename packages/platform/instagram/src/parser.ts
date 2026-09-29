@@ -1,11 +1,12 @@
-import type {
-  Author,
-  Delivery,
-  ExtractFailure,
-  ImageAsset,
-  MediaAsset,
-  MediaPost,
-  VideoAsset,
+import {
+  unsignedProxy,
+  type Author,
+  type Delivery,
+  type ExtractFailure,
+  type ImageAsset,
+  type MediaAsset,
+  type MediaPost,
+  type VideoAsset,
 } from "@fetchr/core"
 import { Effect } from "effect"
 import { failure } from "./failure"
@@ -29,7 +30,7 @@ function cdnRequiresReferer(url: string): boolean {
 
 function deliveryFor(url: string): Delivery {
   if (cdnRequiresReferer(url)) {
-    return { type: "proxy", token: "pending" }
+    return unsignedProxy(url, { Referer: "https://www.instagram.com/" })
   }
   return { type: "direct", url }
 }

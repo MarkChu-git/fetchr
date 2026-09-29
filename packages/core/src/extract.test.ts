@@ -60,6 +60,32 @@ test("extracts a fixture image post into two Direct image assets", async () => {
   })
 })
 
+test("extracts the URL embedded in share text", async () => {
+  const post = await Effect.runPromise(
+    extract(
+      "2.58 复制打开，看看【示例的作品】 https://fixture.test/video/demo t@e.OK PxF:/",
+      transport,
+      [fixtureExtractor],
+    ),
+  )
+
+  expect(post.id).toBe("demo")
+  expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
+})
+
+test("stops a pasted URL before Chinese that is glued to it", async () => {
+  const post = await Effect.runPromise(
+    extract(
+      "https://fixture.test/video/demo复制此链接，打开抖音搜索，直接观看视频！",
+      transport,
+      [fixtureExtractor],
+    ),
+  )
+
+  expect(post.id).toBe("demo")
+  expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
+})
+
 test("extract fails with INVALID_URL when the input is not a URL", async () => {
   const code = await Effect.runPromise(
     Effect.match(extract("not a url", transport, [fixtureExtractor]), {
@@ -82,6 +108,26 @@ test("extract fails with UNSUPPORTED_URL when no extractor matches", async () =>
   expect(code).toBe("UNSUPPORTED_URL")
 })
 
+test("extracts a fixture with separate picture and sound into Mux delivery", async () => {
+  const post = await Effect.runPromise(
+    extract("https://fixture.test/mux/demo", transport, [fixtureExtractor]),
+  )
+
+  expect(post.id).toBe("mux")
+  expect(post.title).toBe("分开的画面和声音")
+  const asset = post.media[0]
+  expect(asset?.type).toBe("video")
+  if (asset?.type !== "video") {
+    throw new Error("expected a video asset")
+  }
+  expect(asset.delivery).toEqual({
+    type: "mux",
+    outputContainer: "mp4",
+    video: { url: "/mux-fixture/video.mp4" },
+    audio: { url: "/mux-fixture/audio.m4a" },
+  })
+})
+
 test("extracting a fixture MediaPost does not use Transport", async () => {
   let calls = 0
   const countingTransport: Transport = {
@@ -100,8 +146,12 @@ test("extracting a fixture MediaPost does not use Transport", async () => {
   const album = await Effect.runPromise(
     extract("https://fixture.test/image/album", countingTransport, [fixtureExtractor]),
   )
+  const mux = await Effect.runPromise(
+    extract("https://fixture.test/mux/demo", countingTransport, [fixtureExtractor]),
+  )
 
   expect(video.id).toBe("demo")
   expect(album.id).toBe("album")
+  expect(mux.id).toBe("mux")
   expect(calls).toBe(0)
 })

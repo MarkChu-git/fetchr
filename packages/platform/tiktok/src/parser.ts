@@ -1,4 +1,9 @@
-import type { ExtractFailure, MediaPost, VideoAsset } from "@fetchr/core"
+import {
+  unsignedProxy,
+  type ExtractFailure,
+  type MediaPost,
+  type VideoAsset,
+} from "@fetchr/core"
 import type { TikTokPage } from "./schema"
 
 const rehydrationId = "__UNIVERSAL_DATA_FOR_REHYDRATION__"
@@ -43,11 +48,13 @@ export const mediaPostFromTikTokPage = (
     }
   }
   const cover = item.video.cover
-  // TikTok's CDN requires a Referer the browser cannot set. Signing stays in the Worker.
+  // TikTok's CDN expects a tiktok.com Referer, which the browser cannot set. Leave signing to the Worker.
   const video: VideoAsset = {
     type: "video",
     id: item.id,
-    delivery: { type: "proxy", token: "pending" },
+    delivery: unsignedProxy(item.video.playAddr, {
+      Referer: "https://www.tiktok.com/",
+    }),
     ...(cover !== undefined ? { thumbnail: cover } : {}),
     ...(item.video.width !== undefined ? { width: item.video.width } : {}),
     ...(item.video.height !== undefined ? { height: item.video.height } : {}),

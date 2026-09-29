@@ -79,8 +79,10 @@ describe("youtube extractor extract", () => {
     expect(asset.type).toBe("video")
     expect(deliveryTypes).toContain(asset.delivery.type)
     expect(asset.delivery).toEqual({
-      type: "direct",
-      url: "https://fixture.googlevideo.invalid/videoplayback?id=dQw4w9WgXcQ&itag=18",
+      type: "proxy",
+      token: "pending",
+      upstreamUrl:
+        "https://fixture.googlevideo.invalid/videoplayback?id=dQw4w9WgXcQ&itag=18",
     })
 
     const encoded = JSON.stringify(post)
@@ -89,6 +91,37 @@ describe("youtube extractor extract", () => {
     expect(encoded).not.toContain("fixture-cipher")
     expect(encoded).not.toContain("playabilityStatus")
     expect(encoded).not.toContain("streamingData")
+  })
+
+  test("asks the Android client with the matching application user agent", async () => {
+    const body = await readFixture("watch-dQw4w9WgXcQ.json")
+    let seen: Request | undefined
+    const transport: Transport = {
+      request: (input) => {
+        seen = input
+        return Effect.succeed(
+          new Response(JSON.stringify(body), {
+            status: 200,
+            headers: { "content-type": "application/json" },
+          }),
+        )
+      },
+    }
+    const exit = await Effect.runPromiseExit(
+      youtubeExtractor.extract(watchResource, transport),
+    )
+    expect(Exit.isSuccess(exit)).toBe(true)
+    expect(seen).toBeDefined()
+    if (seen === undefined) return
+    // A browser User-Agent makes this client return 400. The test locks the version and the identifier together.
+    expect(seen.headers.get("user-agent")).toBe(
+      "com.google.android.youtube/21.03.36(Linux; U; Android 16; en_US; SM-S908E Build/TP1A.220624.014) gzip",
+    )
+    const payload = JSON.parse(await seen.text()) as {
+      context?: { client?: { clientName?: string; clientVersion?: string } }
+    }
+    expect(payload.context?.client?.clientName).toBe("ANDROID")
+    expect(payload.context?.client?.clientVersion).toBe("21.03.36")
   })
 
   test("private video fails with PRIVATE_MEDIA and does not throw", async () => {

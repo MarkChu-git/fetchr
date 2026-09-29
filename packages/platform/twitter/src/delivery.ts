@@ -1,6 +1,6 @@
-import type { Delivery } from "@fetchr/core"
+import { unsignedProxy, type Delivery } from "@fetchr/core"
 
-// The page cannot send these. The worker replaces the pending token when it signs.
+// The browser cannot send these headers. Cookie and Authorization stay out of the token so a login is never signed into it.
 const proxyHeader = /^(authorization|cookie|referer|user-agent)$/i
 
 export function deliveryFor(
@@ -9,7 +9,9 @@ export function deliveryFor(
 ): Delivery {
   if (headers !== undefined) {
     for (const name of Object.keys(headers)) {
-      if (proxyHeader.test(name)) return { type: "proxy", token: "pending" }
+      if (proxyHeader.test(name)) {
+        return unsignedProxy(url, { Referer: "https://x.com/" })
+      }
     }
   }
   return { type: "direct", url }

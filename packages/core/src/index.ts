@@ -31,6 +31,29 @@ export interface DirectDelivery {
 export interface ProxyDelivery {
   readonly type: "proxy"
   readonly token: string
+  /**
+   * Upstream URL before signing. The Worker must delete it after the token is signed. It must not appear in JSON the browser receives.
+   * The browser cannot set Referer, so only the Worker may request this URL.
+   */
+  readonly upstreamUrl?: string
+  /** Headers the Worker attaches. Do not put Cookie or Authorization here. */
+  readonly upstreamHeaders?: Readonly<Record<string, string>>
+}
+
+/** Unsigned proxy handed up by a platform package. The token stays pending until the Worker signs it. */
+export function unsignedProxy(
+  url: string,
+  headers?: Readonly<Record<string, string>>,
+): ProxyDelivery {
+  if (headers === undefined) {
+    return { type: "proxy", token: "pending", upstreamUrl: url }
+  }
+  return {
+    type: "proxy",
+    token: "pending",
+    upstreamUrl: url,
+    upstreamHeaders: headers,
+  }
 }
 
 export interface MediaSource {
