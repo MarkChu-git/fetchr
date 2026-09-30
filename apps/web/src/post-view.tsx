@@ -10,7 +10,7 @@ import type { Author, Delivery, MediaAsset, MediaPost } from "@fetchr/core"
 import * as stylex from "@stylexjs/stylex"
 import type { PageCopy } from "./i18n"
 import type { Locale } from "./i18n"
-import { pageCopy } from "./i18n"
+import { htmlLang, pageCopy } from "./i18n"
 import type { MuxWorkerResult } from "./mux-worker"
 import { useState } from "react"
 
@@ -78,11 +78,12 @@ const styles = stylex.create({
   },
 })
 
-function publishedLabel(value: string | undefined): string | undefined {
+function publishedLabel(value: string | undefined, locale: Locale): string | undefined {
   if (value === undefined) return undefined
   const parsed = Date.parse(value)
   if (Number.isNaN(parsed)) return undefined
-  return new Intl.DateTimeFormat("zh-CN", {
+  // The page language has to reach the formatter. A fixed zh-CN locale kept Chinese dates on the English page.
+  return new Intl.DateTimeFormat(htmlLang(locale), {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -296,7 +297,7 @@ export function PostView({
     (item) => item.preview === thumbnail || item.download === thumbnail,
   )
   const leadImage = heroVideo === undefined && images.length === 1 ? images[0] : undefined
-  const published = publishedLabel(post.publishedAt)
+  const published = publishedLabel(post.publishedAt, locale)
   // The item on the stage gets its download in the side panel, so the button does not fall below a long caption.
   const primaryAsset =
     heroVideo?.asset ??
