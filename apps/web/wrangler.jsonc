@@ -6,5 +6,11 @@
   "main": "@tanstack/react-start/server-entry",
   "observability": {
     "enabled": true
-  }
+  },
+  "routes": [
+    {
+      "pattern": "fetchr.hanyang.app",
+      "custom_domain": true
+    }
+  ]
 }
