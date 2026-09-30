@@ -125,12 +125,13 @@ From the repository root:
 
 ```sh
 bun run lint
+bun run check
 bun run typecheck
 bun test
 bun run build
 ```
 
-`bun run lint` runs oxlint and denies warnings. `bun run typecheck` checks this repository, `scripts/ci`, and `apps/web`. `bun test` runs the tests. `bun run build` builds the Worker.
+`bun run lint` runs oxlint and denies warnings. `bun run check` checks that shipped source stays on Web APIs and that packages keep their dependency boundaries. `bun run typecheck` checks every workspace package and `scripts/ci`. `bun test` runs the tests. `bun run build` builds the Worker.
 
 ## Configuration
 

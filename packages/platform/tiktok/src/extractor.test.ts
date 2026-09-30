@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { Effect, Result } from "effect"
-import { extract, type CanonicalResource, type Transport } from "@fetchr/core"
+import { extract, type CanonicalResource, type ExtractErrorCode, type Transport } from "@fetchr/core"
 import { tiktokExtractor } from "./index"
 
 const videoUrl = new URL(
@@ -170,7 +170,7 @@ describe("tiktokExtractor.extract", () => {
       readonly html: string
       readonly status?: number
       readonly contentType?: string
-      readonly code: string
+      readonly code: ExtractErrorCode
       readonly cause: string
     }> = [
       {

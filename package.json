@@ -9,8 +9,9 @@
   ],
   "scripts": {
     "lint": "oxlint --deny-warnings",
+    "check": "bun scripts/ci/check.ts",
     "test": "bun test",
-    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts/ci/tsconfig.json --noEmit && bun run --cwd apps/web typecheck",
+    "typecheck": "bun scripts/ci/typecheck-workspaces.ts",
     "build": "bun run --cwd apps/web build",
     "deploy": "bun run --cwd apps/web deploy"
   },

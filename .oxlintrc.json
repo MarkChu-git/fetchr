@@ -28,7 +28,9 @@
     "unicorn/require-post-message-target-origin": "off",
     "unicorn/prefer-add-event-listener": "off",
     // The typecheck target is ES2022, which has no Array#toSorted. Flagged sorts already use a fresh array.
-    "unicorn/no-array-sort": "off"
+    "unicorn/no-array-sort": "off",
+    // Generated files such as the route tree are ignored. Everywhere else, explicit any is a type hole.
+    "typescript/no-explicit-any": "error"
   },
   "overrides": [
     {
