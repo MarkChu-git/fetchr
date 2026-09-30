@@ -131,6 +131,16 @@ function failureForPage(
 }
 
 function redirectFailure(input: URL, failure: ExtractFailure): ExtractFailure {
+  if (failure.code === "UPSTREAM_TIMEOUT") {
+    logTikTok({
+      outcome: "error",
+      stage: "fetch",
+      error: failure.code,
+      inputHost: input.hostname,
+      inputPath: input.pathname,
+    })
+    return failure
+  }
   const cause = failure.cause
   if (
     (cause !== undefined && redirectCauses.has(cause)) ||

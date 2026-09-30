@@ -39,14 +39,15 @@ interface HtmlRewriterConstructor {
 /**
  * Read the rehydration script.
  * On runtimes that provide HTMLRewriter, that parser is the primary path.
- * The balanced scanner runs when HTMLRewriter is missing or did not find the script.
+ * The balanced scanner runs only when HTMLRewriter itself is unavailable.
  */
 export async function readRehydration(html: string): Promise<ScriptExtraction> {
-  try {
-    const rewritten = await readWithHtmlRewriter(html)
-    if (rewritten !== undefined) return rewritten
-  } catch {
-    // HTMLRewriter could not read this document. The scanner below is the fallback.
+  if (htmlRewriterConstructor() !== undefined) {
+    try {
+      return await readWithHtmlRewriter(html)
+    } catch {
+      // HTMLRewriter could not read this document. The scanner below is the fallback.
+    }
   }
   return scanRehydration(html)
 }
@@ -56,8 +57,11 @@ export function scanRehydration(html: string): ScriptExtraction {
   const at = html.indexOf(rehydrationId)
   if (at < 0) return { status: "not-found" }
   const rest = html.slice(at + rehydrationId.length)
-  const closeAt = indexOfScriptClose(rest)
-  const region = closeAt < 0 ? rest : rest.slice(0, closeAt)
+  // The marker sits in the opening tag. Skip to the tag's end so `">` is not treated as script text.
+  const tagEnd = rest.indexOf(">")
+  const body = tagEnd < 0 ? rest : rest.slice(tagEnd + 1)
+  const closeAt = indexOfScriptClose(body)
+  const region = closeAt < 0 ? body : body.slice(0, closeAt)
   const brace = region.indexOf("{")
   if (brace < 0) {
     return region.trim().length === 0 ? { status: "empty" } : { status: "invalid-json" }
@@ -143,9 +147,9 @@ export const mediaPostFromTikTokPage = (
   return { post }
 }
 
-async function readWithHtmlRewriter(html: string): Promise<ScriptExtraction | undefined> {
+async function readWithHtmlRewriter(html: string): Promise<ScriptExtraction> {
   const Rewriter = htmlRewriterConstructor()
-  if (Rewriter === undefined) return undefined
+  if (Rewriter === undefined) return { status: "not-found" }
   const chunks: string[] = []
   let found = false
   const rewriter = new Rewriter().on(rehydrationSelector, {
@@ -158,8 +162,7 @@ async function readWithHtmlRewriter(html: string): Promise<ScriptExtraction | un
   })
   // Handlers run only while the transformed body is consumed.
   await rewriter.transform(new Response(html)).text()
-  if (!found) return undefined
-  return rehydrationFromParts(true, chunks)
+  return rehydrationFromParts(found, chunks)
 }
 
 function htmlRewriterConstructor(): HtmlRewriterConstructor | undefined {

@@ -37,6 +37,11 @@ test("distinguishes a missing script, an empty script, and invalid JSON", async 
   expect(
     await readRehydration(`<script id="${marker}">   </script>`),
   ).toEqual({ status: "empty" })
+  expect(scanRehydration(`<script id="${marker}"></script>`)).toEqual({ status: "empty" })
+  expect(scanRehydration(`<script id="${marker}">   </script>`)).toEqual({ status: "empty" })
+  expect(await readRehydration(`<div id="${marker}">{"a":1}</div>`)).toEqual({
+    status: "not-found",
+  })
   expect(scanRehydration(`<script id="${marker}">{</script>`)).toEqual({
     status: "invalid-json",
   })

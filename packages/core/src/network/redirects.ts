@@ -88,7 +88,7 @@ function requestFor(url: URL): Request {
 }
 
 function rejectTarget(url: URL, allow: (url: URL) => boolean): ExtractFailure | undefined {
-  // A TikTok URL can redirect anywhere. The original host does not vouch for the next one.
+  // The original host does not vouch for the next hop.
   if (isBlockedRequestTarget(url)) {
     return redirectFailure("blocked-target", "URL target is not a public http(s) address")
   }

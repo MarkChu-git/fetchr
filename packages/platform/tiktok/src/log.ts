@@ -17,9 +17,9 @@ export interface TikTokLogEvent {
   readonly contentTypeHint?: string
 }
 
-/** Development log for one TikTok attempt. Host and path only: no query, cookie, or share text. */
+/** Failure log for one TikTok attempt. Host and path only: no query, cookie, or share text. */
 export function logTikTok(event: TikTokLogEvent): void {
-  if (event.outcome === "ok" && !debugEnabled()) return
+  if (event.outcome !== "error") return
   console.info(JSON.stringify({ source: "tiktok", ...event }))
 }
 
@@ -52,6 +52,3 @@ export function logFields(diagnostic: TikTokFetchDiagnostic): Pick<
   }
 }
 
-function debugEnabled(): boolean {
-  return globalThis.process?.env?.FETCHR_DEBUG === "1"
-}
