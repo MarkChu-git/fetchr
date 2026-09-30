@@ -6,22 +6,13 @@ import { Grid } from "@astryxdesign/core/Grid"
 import { Heading, Text } from "@astryxdesign/core/Text"
 import { HStack } from "@astryxdesign/core/HStack"
 import { VStack } from "@astryxdesign/core/VStack"
-import type { Author, Delivery, MediaAsset, MediaPost, Platform } from "@fetchr/core"
+import type { Author, Delivery, MediaAsset, MediaPost } from "@fetchr/core"
 import * as stylex from "@stylexjs/stylex"
+import type { PageCopy } from "./i18n"
+import type { Locale } from "./i18n"
+import { pageCopy } from "./i18n"
 import type { MuxWorkerResult } from "./mux-worker"
 import { useState } from "react"
-
-const platformLabel: Record<Platform, string> = {
-  fixture: "示例",
-  youtube: "YouTube",
-  xiaohongshu: "小红书",
-  douyin: "抖音",
-  instagram: "Instagram",
-  tiktok: "TikTok",
-  kuaishou: "快手",
-  bilibili: "哔哩哔哩",
-  twitter: "X",
-}
 
 const styles = stylex.create({
   layout: {
@@ -201,9 +192,11 @@ function savedName(href: string, type: string): string {
 
 function DownloadLink({
   href,
+  text,
   fill = false,
 }: {
   readonly href: string
+  readonly text: PageCopy
   readonly fill?: boolean
 }) {
   const [message, setMessage] = useState<string | undefined>()
@@ -228,7 +221,7 @@ function DownloadLink({
     try {
       const response = await fetch(href)
       if (!response.ok) {
-        setMessage("浏览器读不到这个文件")
+        setMessage(text.fileUnreadable)
         return
       }
       const blob = await response.blob()
@@ -239,7 +232,7 @@ function DownloadLink({
       anchor.click()
       setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
     } catch {
-      setMessage("浏览器读不到这个文件")
+      setMessage(text.fileUnreadable)
     }
   }
 
@@ -247,7 +240,7 @@ function DownloadLink({
   return (
     <VStack gap={2} {...wide}>
       <Button
-        label="下载"
+        label={text.download}
         type="button"
         variant="primary"
         {...wide}
@@ -264,7 +257,14 @@ function DownloadLink({
   )
 }
 
-export function PostView({ post }: { readonly post: MediaPost }) {
+export function PostView({
+  post,
+  locale,
+}: {
+  readonly post: MediaPost
+  readonly locale: Locale
+}) {
+  const text = pageCopy(locale)
   const author = post.author
   const name = authorLabel(author)
   const avatar = present(author?.avatar)
@@ -361,7 +361,7 @@ export function PostView({ post }: { readonly post: MediaPost }) {
                       referrerPolicy="no-referrer"
                     />
                   </div>
-                  <DownloadLink href={item.download} fill />
+                  <DownloadLink href={item.download} text={text} fill />
                 </VStack>
               ))}
             </Grid>
@@ -405,7 +405,7 @@ export function PostView({ post }: { readonly post: MediaPost }) {
                     preload="metadata"
                   />
                 ) : null}
-                {hideDownload ? null : <DownloadLink href={item.url} />}
+                {hideDownload ? null : <DownloadLink href={item.url} text={text} />}
               </VStack>
             )
           })}
@@ -414,7 +414,7 @@ export function PostView({ post }: { readonly post: MediaPost }) {
             (primaryAsset !== undefined && asset.id === primaryAsset.id) ||
             isBrowserFallback(asset) ||
             isOnStage(asset) ? null : (
-              <DeliveryActions key={`${asset.id}-delivery`} asset={asset} />
+              <DeliveryActions key={`${asset.id}-delivery`} asset={asset} text={text} />
             ),
           )}
         </VStack>
@@ -433,7 +433,7 @@ export function PostView({ post }: { readonly post: MediaPost }) {
               <VStack gap={1}>
                 {name !== undefined ? <Text type="large">{name}</Text> : null}
                 <HStack gap={2} vAlign="center" wrap="wrap">
-                  <Badge label={platformLabel[post.platform]} variant="neutral" />
+                  <Badge label={text.platform[post.platform]} variant="neutral" />
                   {published !== undefined ? (
                     <Text type="supporting" color="secondary">
                       {published}
@@ -443,7 +443,7 @@ export function PostView({ post }: { readonly post: MediaPost }) {
               </VStack>
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
-            {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} /> : null}
+            {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} text={text} /> : null}
             {description !== undefined && description !== title ? (
               <div {...stylex.props(styles.copy)}>
                 <Text type="body" display="block">
@@ -458,57 +458,71 @@ export function PostView({ post }: { readonly post: MediaPost }) {
   )
 }
 
-function PrimaryAction({ asset }: { readonly asset: MediaAsset }) {
+function PrimaryAction({
+  asset,
+  text,
+}: {
+  readonly asset: MediaAsset
+  readonly text: PageCopy
+}) {
   const delivery = asset.delivery
   if (delivery.type === "direct") {
-    return <DownloadLink href={delivery.url} fill />
+    return <DownloadLink href={delivery.url} text={text} fill />
   }
   if (delivery.type === "proxy") {
     const href = proxyHref(delivery)
-    return href === undefined ? null : <DownloadLink href={href} fill />
+    return href === undefined ? null : <DownloadLink href={href} text={text} fill />
   }
   if (delivery.type === "playlist") {
     return (
       <VStack gap={2} width="100%">
         <Text type="supporting" color="secondary">
-          这是一份 {delivery.protocol.toUpperCase()} 清单
+          {text.manifest(delivery.protocol.toUpperCase())}
         </Text>
-        <DownloadLink href={delivery.url} fill />
+        <DownloadLink href={delivery.url} text={text} fill />
       </VStack>
     )
   }
   return (
-    <MuxButton videoUrl={delivery.video.url} audioUrl={delivery.audio.url} fill />
+    <MuxButton videoUrl={delivery.video.url} audioUrl={delivery.audio.url} text={text} fill />
   )
 }
 
-function DeliveryActions({ asset }: { readonly asset: MediaAsset }) {
+function DeliveryActions({
+  asset,
+  text,
+}: {
+  readonly asset: MediaAsset
+  readonly text: PageCopy
+}) {
   const delivery = asset.delivery
   if (delivery.type === "direct") return null
   if (delivery.type === "proxy") {
     const href = proxyHref(delivery)
-    return href === undefined ? null : <DownloadLink href={href} />
+    return href === undefined ? null : <DownloadLink href={href} text={text} />
   }
   if (delivery.type === "playlist") {
     return (
       <VStack gap={2}>
         <Text type="supporting" color="secondary">
-          这是一份 {delivery.protocol.toUpperCase()} 清单
+          {text.manifest(delivery.protocol.toUpperCase())}
         </Text>
-        <DownloadLink href={delivery.url} />
+        <DownloadLink href={delivery.url} text={text} />
       </VStack>
     )
   }
-  return <MuxButton videoUrl={delivery.video.url} audioUrl={delivery.audio.url} />
+  return <MuxButton videoUrl={delivery.video.url} audioUrl={delivery.audio.url} text={text} />
 }
 
 function MuxButton({
   videoUrl,
   audioUrl,
+  text,
   fill = false,
 }: {
   readonly videoUrl: string
   readonly audioUrl: string
+  readonly text: PageCopy
   readonly fill?: boolean
 }) {
   const [message, setMessage] = useState<string | undefined>()
@@ -535,11 +549,11 @@ function MuxButton({
         })
       })
       if (result.type === "unreadable") {
-        setMessage("浏览器读不到这两路字节，无法合成")
+        setMessage(text.combineUnreadable)
         return
       }
       if (result.type === "failed") {
-        setMessage("合成失败")
+        setMessage(text.combineFailed)
         return
       }
       const href = URL.createObjectURL(
@@ -552,7 +566,7 @@ function MuxButton({
       // Revoking immediately cancels a download that has not started yet.
       setTimeout(() => URL.revokeObjectURL(href), 60_000)
     } catch {
-      setMessage("合成失败")
+      setMessage(text.combineFailed)
     } finally {
       worker.terminate()
       setBusy(false)
@@ -563,7 +577,7 @@ function MuxButton({
   return (
     <VStack gap={2} {...wide}>
       <Button
-        label="合成并下载"
+        label={text.combine}
         type="button"
         variant="secondary"
         size="lg"

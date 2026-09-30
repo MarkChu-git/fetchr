@@ -140,7 +140,22 @@ describe("openProxyDownload", () => {
       fetchImpl,
     )
     expect(response.status).toBe(403)
+    expect(await response.text()).toBe("上游跳转被拒绝")
     expect(seen).toEqual(["https://cdn.example/video.mp4"])
+  })
+
+  test("names a bad token in the page language", async () => {
+    resetGuards()
+    const chinese = await openProxyDownload("not-a-token", 1_000, "203.0.113.20")
+    expect(chinese.status).toBe(403)
+    expect(await chinese.text()).toBe("下载链接无效")
+    const english = await openProxyDownload("not-a-token", 1_001, "203.0.113.21", fetch, {
+      range: null,
+      inline: false,
+      locale: "en",
+    })
+    expect(english.status).toBe(403)
+    expect(await english.text()).toBe("This download link is not valid")
   })
 
   test("forwards a single byte range and lets the video element play inline", async () => {

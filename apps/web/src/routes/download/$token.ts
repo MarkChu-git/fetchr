@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router"
+import { localeFromCookie } from "../../i18n"
 import { addressFrom, openProxyDownload } from "../../server/product"
 
 export const Route = createFileRoute("/download/$token")({
@@ -14,6 +15,7 @@ export const Route = createFileRoute("/download/$token")({
           {
             range: request.headers.get("range"),
             inline: url.searchParams.get("inline") === "1",
+            locale: localeFromCookie(request.headers.get("cookie")),
           },
         )
       },

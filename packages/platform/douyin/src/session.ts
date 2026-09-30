@@ -1,7 +1,8 @@
 /**
- * A public video needs no login.
- * The web detail API answers 403 to the Worker's fetch. The mobile feed returns a play URL for the same public work.
- * A normal browser identifier makes this API return an empty list, so the request always sends the app User-Agent.
+ * A public video needs no login cookie.
+ * The mobile feed used to return the requested work. It now ignores aweme_id and returns other recommendations.
+ * Web detail from a Worker answers 403, body "Blocked by ArgusSecurityPlugin Uifid Not Found". Do not sign that request.
+ * The app User-Agent stays because that client still receives a list. A browser User-Agent no longer empties it.
  */
 const appUserAgent =
   "com.ss.android.ugc.aweme/320901 (Linux; U; Android 13; zh_CN; Pixel 7; Build/TD1A.220804.031; Cronet/58.0.2991.0)"

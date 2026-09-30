@@ -15,6 +15,7 @@ import { twitterExtractor } from "@fetchr/platform-twitter"
 import { xiaohongshuExtractor } from "@fetchr/platform-xiaohongshu"
 import { youtubeExtractor } from "@fetchr/platform-youtube"
 import { Effect } from "effect"
+import { pageCopy, type Locale } from "../i18n"
 import {
   clientAddress,
   deliveryKinds,
@@ -212,18 +213,23 @@ export async function openProxyDownload(
   now: number,
   ip: string,
   fetchImpl: typeof fetch = fetch,
-  incoming?: { readonly range: string | null; readonly inline: boolean },
+  incoming?: {
+    readonly range: string | null
+    readonly inline: boolean
+    readonly locale?: Locale
+  },
 ): Promise<Response> {
   const permit = takePermit(ip, "download", now)
   if (!permit.ok) {
     return Response.json({ code: "RATE_LIMITED" }, { status: 429 })
   }
+  const text = pageCopy(incoming?.locale ?? "zh")
   let claims
   try {
     claims = await verify({ token, now, secret: proxySecret() })
     assertPublicHttpUrl(claims.url)
   } catch {
-    return new Response("下载链接无效", { status: 403 })
+    return new Response(text.downloadInvalid, { status: 403 })
   }
 
   const headersForFetch = headersForUpstream(claims.headers)
@@ -242,13 +248,13 @@ export async function openProxyDownload(
     hop += 1
   ) {
     const location = upstream.headers.get("location")
-    if (location === null) return new Response("上游跳转无效", { status: 502 })
+    if (location === null) return new Response(text.redirectInvalid, { status: 502 })
     let next: URL
     try {
       next = new URL(location, currentUrl)
       assertPublicHttpUrl(next.toString())
     } catch {
-      return new Response("上游跳转被拒绝", { status: 403 })
+      return new Response(text.redirectRejected, { status: 403 })
     }
     currentUrl = next.toString()
     // The next request exists only after this response supplies a Location.
@@ -259,7 +265,7 @@ export async function openProxyDownload(
     })
   }
   if (upstream.status >= 300 && upstream.status < 400) {
-    return new Response("上游跳转过多", { status: 502 })
+    return new Response(text.redirectTooMany, { status: 502 })
   }
   const headers = new Headers()
   const type = upstream.headers.get("content-type")

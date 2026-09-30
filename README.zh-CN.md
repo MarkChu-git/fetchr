@@ -26,6 +26,8 @@ bun run --cwd apps/web dev
 
 ## 使用页面
 
+页面默认是中文。顶栏的 **中文** 和 **EN** 切换语言。英文也可以用 `?lang=en` 打开。选择会写进 cookie，之后的下载错误沿用同一种语言。
+
 输入框的标签是 **粘贴链接**。可以贴 URL，也可以贴整段分享文案。Fetchr 保留其中的 `http` 或 `https` 地址，去掉零宽字符，并去掉末尾标点。
 
 按 **解析**。帖子会换掉空白状态。按 **下载** 保存文件。画面和声音分成两个文件时，按 **合成并下载**。浏览器合成后保存 `fetchr.mp4`。DASH 播放列表会显示「这是一份 DASH 清单」，**下载** 保存的是这份清单。
@@ -57,14 +59,14 @@ bun run --cwd apps/web dev
 
 Fetchr 做这些事：
 
-- 抖音的公开视频和图文不保存登录态也能读取。`v.douyin.com` 短链可以解析。页面地址只带 `modal_id` 时也可以。
-- 抖音视频保存的是原文件（`ratio=default`）。没有这个播放 id 时，Fetchr 优先使用不含 `playwm` 的播放地址。只有 `playwm` 地址时，把它改成 `play`。图文保存 `url_list` 里最后一个非 webp 地址。`download_url_list` 不读取，因为那些地址带水印。
+- 抖音图文不保存登录态也能读取。指向某一条视频的链接会得到「上游没有返回可用页面」：公开信息流列出的是其他作品，详情接口会拒绝这台 Worker。`v.douyin.com` 短链可以解析。页面地址只带 `modal_id`、作品又是图文时，同样可以解析。
+- 拿到抖音视频数据时，保存的是原文件（`ratio=default`）。没有这个播放 id 时，Fetchr 优先使用不含 `playwm` 的播放地址。只有 `playwm` 地址时，把它改成 `play`。图文保存 `url_list` 里最后一个非 webp 地址。`download_url_list` 不读取，因为那些地址带水印。
 - 哔哩哔哩的公开视频来自 `www.bilibili.com` 和 `m.bilibili.com`，短链来自 `b23.tv`。画面和声音分开时，由浏览器合成。
 - YouTube 的 `/watch` 地址包括 `www.youtube.com`、`m.youtube.com`、`music.youtube.com` 和 `youtube-nocookie.com`，另外还有 `youtu.be` 链接。
 - X 和 Twitter 的状态地址在 `x.com`、`www.x.com`、`twitter.com` 和 `www.twitter.com` 上。帖子对未登录访客可见时可以读取。
 - 小红书的 `/explore/` 与 `xhslink.com`，Instagram 的 `/p/` 与 `/reel/`，TikTok 在 `tiktok.com`（含 `www`、`m`、`vm`、`vt`）上的地址，包括 `/t/` 短链和 `@user/video`、`@user/photo` 路径，以及快手在 `v.kuaishou.com` 和 `www.kuaishou.com/short-video/` 上的地址。
 - 一个 Worker，名称是 `fetchr-web`。它不保存媒体文件，也不做转码。
-- 浏览器附不上文件主机要求的请求头时，下载地址是 HMAC-SHA256 令牌。令牌 5 分钟后过期。校验失败的令牌会得到响应「下载链接无效」。
+- 浏览器附不上文件主机要求的请求头时，下载地址是 HMAC-SHA256 令牌。令牌 5 分钟后过期。校验失败时，中文页面的响应是「下载链接无效」，英文页面的响应是 “This download link is not valid”。
 
 ## 工作方式
 

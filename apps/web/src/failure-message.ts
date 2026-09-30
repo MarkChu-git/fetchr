@@ -1,35 +1,43 @@
 import type { ExtractErrorCode } from "@fetchr/core"
+import type { Locale } from "./i18n"
 
-export function failureMessage(code: ExtractErrorCode): string {
-  switch (code) {
-    case "UNSUPPORTED_URL":
-    case "INVALID_URL":
-      return "这个链接不支持"
-    case "PRIVATE_MEDIA":
-      return "这条内容是私密的"
-    case "LOGIN_REQUIRED":
-      return "需要登录才能查看"
-    case "MEDIA_NOT_FOUND":
-      return "没有找到这条内容"
-    case "PAYLOAD_MISSING":
-      return "页面里没有可下载的内容"
-    case "UPSTREAM_BLOCKED":
-      return "上游暂时拦截了这次请求"
-    case "SCHEMA_CHANGED":
-      return "页面数据格式变了"
-    case "RESOLVE_FAILED":
-      return "这个链接没有解析成功"
-    case "SOURCE_UNAVAILABLE":
-      return "上游没有返回可用页面"
-    case "UPSTREAM_TIMEOUT":
-      return "上游没有及时响应"
-    case "RATE_LIMITED":
-      return "请求太频繁，请稍后再试"
-    case "DRM_PROTECTED":
-      return "这条内容有版权保护，不能下载"
-    case "GEO_BLOCKED":
-      return "这个地区看不了这条内容"
-    default:
-      return "解析失败"
-  }
+const failureCopy = {
+  zh: {
+    UNSUPPORTED_URL: "这个链接不支持",
+    INVALID_URL: "这个链接不支持",
+    PRIVATE_MEDIA: "这条内容是私密的",
+    LOGIN_REQUIRED: "需要登录才能查看",
+    MEDIA_NOT_FOUND: "没有找到这条内容",
+    PAYLOAD_MISSING: "页面里没有可下载的内容",
+    UPSTREAM_BLOCKED: "上游暂时拦截了这次请求",
+    SCHEMA_CHANGED: "页面数据格式变了",
+    RESOLVE_FAILED: "这个链接没有解析成功",
+    SOURCE_UNAVAILABLE: "上游没有返回可用页面",
+    UPSTREAM_TIMEOUT: "上游没有及时响应",
+    RATE_LIMITED: "请求太频繁，请稍后再试",
+    DRM_PROTECTED: "这条内容有版权保护，不能下载",
+    GEO_BLOCKED: "这个地区看不了这条内容",
+    EXTRACTOR_BROKEN: "解析失败",
+  },
+  en: {
+    UNSUPPORTED_URL: "This link is not supported",
+    INVALID_URL: "This link is not supported",
+    PRIVATE_MEDIA: "This post is private",
+    LOGIN_REQUIRED: "You need to sign in to view this",
+    MEDIA_NOT_FOUND: "This post was not found",
+    PAYLOAD_MISSING: "This page has nothing to download",
+    UPSTREAM_BLOCKED: "The upstream blocked this request",
+    SCHEMA_CHANGED: "The page data format changed",
+    RESOLVE_FAILED: "This link did not resolve",
+    SOURCE_UNAVAILABLE: "The upstream sent no usable page",
+    UPSTREAM_TIMEOUT: "The upstream did not respond in time",
+    RATE_LIMITED: "Too many requests. Try again in a moment.",
+    DRM_PROTECTED: "This post is protected and cannot be downloaded",
+    GEO_BLOCKED: "This region cannot play this post",
+    EXTRACTOR_BROKEN: "Could not parse this link",
+  },
+} as const satisfies Record<Locale, Record<ExtractErrorCode, string>>
+
+export function failureMessage(code: ExtractErrorCode, locale: Locale = "zh"): string {
+  return failureCopy[locale][code]
 }
