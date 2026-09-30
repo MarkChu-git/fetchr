@@ -1,0 +1,7 @@
+# Vendored agent skills are not this product.
+.grok/
+.claude/
+.agents/
+node_modules/
+graphify-out/
+.gitnexus/

@@ -1,0 +1,1 @@
+export { tiktokExtractor } from "./extractor"

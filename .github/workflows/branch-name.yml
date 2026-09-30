@@ -1,0 +1,27 @@
+name: Branch name
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  branch-name:
+    name: branch-name
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check the head branch
+        env:
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|test|chore|perf|ci|revert|build|hotfix)/[a-z0-9]+([-/][a-z0-9]+)*$|^dependabot/.+'
+          if [[ ! "$BRANCH" =~ $pattern ]]; then
+            echo "Branch name '$BRANCH' does not match the required pattern."
+            echo "Use a name like feat/public-media."
+            echo "Allowed prefixes: feat, fix, docs, style, refactor, test, chore, perf, ci, revert, build, hotfix."
+            echo "Dependabot branches (dependabot/...) are also allowed."
+            exit 1
+          fi

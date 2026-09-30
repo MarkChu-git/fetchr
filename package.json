@@ -1,0 +1,33 @@
+{
+  "name": "fetchr",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "packages/platform/*"
+  ],
+  "scripts": {
+    "lint": "oxlint --deny-warnings",
+    "test": "bun test",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p scripts/ci/tsconfig.json --noEmit && bun run --cwd apps/web typecheck",
+    "build": "bun run --cwd apps/web build",
+    "deploy": "bun run --cwd apps/web deploy"
+  },
+  "packageManager": "bun@1.4.2",
+  "devDependencies": {
+    "@types/bun": "1.2.22",
+    "oxlint": "1.86.0",
+    "typescript": "5.9.2"
+  },
+  "cloudflare": {
+    "bindings": {
+      "FETCHR_PROXY_SECRET": {
+        "description": "HMAC key for signed download URLs. Generate one with `openssl rand -hex 32`. Use at least 16 characters, and a different value for every deploy. Leave the example file empty."
+      },
+      "TURNSTILE_SECRET": {
+        "description": "Optional Cloudflare Turnstile secret. Leave it empty to refuse requests that go over the rate limit."
+      }
+    }
+  }
+}

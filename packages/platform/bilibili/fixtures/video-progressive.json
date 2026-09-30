@@ -1,0 +1,37 @@
+{
+  "view": {
+    "code": 0,
+    "message": "0",
+    "ttl": 1,
+    "data": {
+      "bvid": "BV1xx411c7mD",
+      "cid": 1001,
+      "title": "anonymous progressive file",
+      "pic": "https://cdn.example.test/anonymous/cover.jpg",
+      "pubdate": 1700000000,
+      "owner": {
+        "mid": 1,
+        "name": "anonymous",
+        "face": "https://cdn.example.test/anonymous/avatar.jpg"
+      }
+    }
+  },
+  "playurl": {
+    "code": 0,
+    "message": "0",
+    "ttl": 1,
+    "data": {
+      "quality": 16,
+      "format": "mp4",
+      "timelength": 8000,
+      "durl": [
+        {
+          "order": 1,
+          "length": 8000,
+          "size": 4096,
+          "url": "https://cdn.example.test/anonymous/progressive.mp4"
+        }
+      ]
+    }
+  }
+}

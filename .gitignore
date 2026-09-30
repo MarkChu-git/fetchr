@@ -33,3 +33,12 @@ coverage/
 # Cache
 .cache/
 *.tsbuildinfo
+
+# Wrangler keeps local secrets here. The example file is committed. Real values are not.
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+
+# Knowledge graphs are generated local indexes. Committing them only creates conflicts.
+.gitnexus/
+graphify-out/

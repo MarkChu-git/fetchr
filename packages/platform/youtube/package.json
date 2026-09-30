@@ -1,0 +1,14 @@
+{
+  "name": "@fetchr/platform-youtube",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@fetchr/core": "workspace:*",
+    "effect": "4.0.0-rc.117",
+    "youtubei.js": "^18.1.0"
+  }
+}

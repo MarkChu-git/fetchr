@@ -1,0 +1,7 @@
+# HMAC key for signed download URLs. At least 16 characters.
+# Generate one with: openssl rand -hex 32
+# Leave this empty. A value published in git would be a known key.
+FETCHR_PROXY_SECRET=
+
+# Optional Turnstile secret. Leave empty to refuse requests over the rate limit.
+TURNSTILE_SECRET=

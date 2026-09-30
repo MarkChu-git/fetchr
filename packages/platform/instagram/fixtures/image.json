@@ -1,0 +1,16 @@
+{
+  "shortcode_media": {
+    "__typename": "GraphImage",
+    "shortcode": "ABC123",
+    "display_url": "https://cdn.example.test/instagram/ABC123.jpg",
+    "is_video": false,
+    "dimensions": { "width": 1080, "height": 1350 },
+    "owner": {
+      "username": "fixture_author",
+      "full_name": "Fixture Author"
+    },
+    "edge_media_to_caption": {
+      "edges": [{ "node": { "text": "a public photo" } }]
+    }
+  }
+}

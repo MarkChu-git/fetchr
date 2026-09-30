@@ -1,0 +1,1 @@
+export { twitterExtractor } from "./extractor"

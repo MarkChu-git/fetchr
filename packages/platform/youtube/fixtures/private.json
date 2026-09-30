@@ -1,0 +1,14 @@
+{
+  "playabilityStatus": {
+    "status": "UNPLAYABLE",
+    "reason": "This video is private."
+  },
+  "videoDetails": {
+    "videoId": "aaaaaaaaaaa",
+    "title": "Private fixture",
+    "author": "Fixture Author",
+    "channelId": "UCaaaaaaaaaaaa",
+    "isPrivate": true,
+    "shortDescription": ""
+  }
+}
