@@ -1,4 +1,5 @@
 import {
+  hostAllowed,
   unsignedProxy,
   type Author,
   type CanonicalResource,
@@ -98,16 +99,12 @@ function hostNeedsProxy(url: string): boolean {
   } catch {
     return false
   }
-  return (
-    hostname === "douyinpic.com" ||
-    hostname.endsWith(".douyinpic.com") ||
-    hostname === "douyincdn.com" ||
-    hostname.endsWith(".douyincdn.com") ||
-    hostname === "byteimg.com" ||
-    hostname.endsWith(".byteimg.com") ||
-    hostname === "ibyteimg.com" ||
-    hostname.endsWith(".ibyteimg.com")
-  )
+  return hostAllowed(hostname, [
+    "douyinpic.com",
+    "douyincdn.com",
+    "byteimg.com",
+    "ibyteimg.com",
+  ])
 }
 
 /** The image host does not let the browser read bytes across origins, so use the proxy. Fixture hosts still return directly. */

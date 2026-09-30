@@ -1,4 +1,5 @@
 import {
+  hostAllowed,
   unsignedProxy,
   type Author,
   type CanonicalResource,
@@ -459,9 +460,7 @@ function needsReferer(rawUrl: string): boolean {
   } catch {
     return true
   }
-  return refererHostSuffixes.some(
-    (suffix) => hostname === suffix || hostname.endsWith(`.${suffix}`),
-  )
+  return hostAllowed(hostname, refererHostSuffixes)
 }
 
 function containerOf(rawUrl: string): "mp4" | "webm" | undefined {

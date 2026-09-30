@@ -42,6 +42,12 @@ bun run --cwd apps/web dev
 | 帖子是私密的 | 这条内容是私密的 |
 | 平台要求登录 | 需要登录才能查看 |
 | 找不到这条内容 | 没有找到这条内容 |
+| 页面里没有可下载的媒体数据 | 页面里没有可下载的内容 |
+| 上游拦截了这次请求 | 上游暂时拦截了这次请求 |
+| 页面数据格式变了 | 页面数据格式变了 |
+| 链接没有解析成功 | 这个链接没有解析成功 |
+| 上游没有返回可用页面 | 上游没有返回可用页面 |
+| 上游没有及时响应 | 上游没有及时响应 |
 | 超过限额 | 请求太频繁，请稍后再试 |
 | 数字版权管理（DRM）拦截了文件 | 这条内容有版权保护，不能下载 |
 | 当前地区不能播放 | 这个地区看不了这条内容 |
@@ -56,7 +62,7 @@ Fetchr 做这些事：
 - 哔哩哔哩的公开视频来自 `www.bilibili.com` 和 `m.bilibili.com`，短链来自 `b23.tv`。画面和声音分开时，由浏览器合成。
 - YouTube 的 `/watch` 地址包括 `www.youtube.com`、`m.youtube.com`、`music.youtube.com` 和 `youtube-nocookie.com`，另外还有 `youtu.be` 链接。
 - X 和 Twitter 的状态地址在 `x.com`、`www.x.com`、`twitter.com` 和 `www.twitter.com` 上。帖子对未登录访客可见时可以读取。
-- 小红书的 `/explore/` 与 `xhslink.com`，Instagram 的 `/p/` 与 `/reel/`，TikTok 在 `tiktok.com` 和 `vm.tiktok.com` 上的视频地址，以及快手在 `v.kuaishou.com` 和 `www.kuaishou.com/short-video/` 上的地址。
+- 小红书的 `/explore/` 与 `xhslink.com`，Instagram 的 `/p/` 与 `/reel/`，TikTok 在 `tiktok.com`（含 `www`、`m`、`vm`、`vt`）上的地址，包括 `/t/` 短链和 `@user/video`、`@user/photo` 路径，以及快手在 `v.kuaishou.com` 和 `www.kuaishou.com/short-video/` 上的地址。
 - 一个 Worker，名称是 `fetchr-web`。它不保存媒体文件，也不做转码。
 - 浏览器附不上文件主机要求的请求头时，下载地址是 HMAC-SHA256 令牌。令牌 5 分钟后过期。校验失败的令牌会得到响应「下载链接无效」。
 

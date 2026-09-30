@@ -131,11 +131,13 @@ export const extractErrorCodes = [
   "INVALID_URL",
   "RESOLVE_FAILED",
   "MEDIA_NOT_FOUND",
+  "PAYLOAD_MISSING",
   "PRIVATE_MEDIA",
   "LOGIN_REQUIRED",
   "GEO_BLOCKED",
   "RATE_LIMITED",
   "SOURCE_UNAVAILABLE",
+  "UPSTREAM_BLOCKED",
   "EXTRACTOR_BROKEN",
   "SCHEMA_CHANGED",
   "DRM_PROTECTED",
@@ -147,6 +149,8 @@ export type ExtractErrorCode = (typeof extractErrorCodes)[number]
 export interface ExtractFailure {
   readonly code: ExtractErrorCode
   readonly message: string
+  /** Machine-readable cause for logs and tests. The page does not show this value. */
+  readonly cause?: string
 }
 
 export interface Transport {
@@ -173,4 +177,13 @@ export interface ExtractorRegistry {
 }
 
 export { extract } from "./extract"
+export { detectUrls, type DetectedUrl } from "./input/detect-urls"
+export { hostAllowed, hostMatches } from "./input/host"
+export {
+  followRedirects,
+  resolveRedirects,
+  type FollowedResponse,
+  type RedirectPolicy,
+} from "./network/redirects"
+export { isBlockedHostname, isBlockedRequestTarget } from "./network/ssrf"
 export { fixtureExtractor } from "@fetchr/fixture"

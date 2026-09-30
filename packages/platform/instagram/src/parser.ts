@@ -1,4 +1,5 @@
 import {
+  hostAllowed,
   unsignedProxy,
   type Author,
   type Delivery,
@@ -23,9 +24,7 @@ function cdnRequiresReferer(url: string): boolean {
   } catch {
     return true
   }
-  return REFERRER_CDNS.some(
-    (cdn) => hostname === cdn || hostname.endsWith(`.${cdn}`),
-  )
+  return hostAllowed(hostname, REFERRER_CDNS)
 }
 
 function deliveryFor(url: string): Delivery {
