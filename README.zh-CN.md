@@ -125,12 +125,13 @@ export function extract(
 
 ```sh
 bun run lint
+bun run check
 bun run typecheck
 bun test
 bun run build
 ```
 
-`bun run lint` 运行 oxlint，警告也算失败。`bun run typecheck` 检查本仓库、`scripts/ci` 和 `apps/web`。`bun test` 运行测试。`bun run build` 构建 Worker。
+`bun run lint` 运行 oxlint，警告也算失败。`bun run check` 检查发布代码只用 Web API，并且包之间的依赖不越界。`bun run typecheck` 检查每个 workspace 包和 `scripts/ci`。`bun test` 运行测试。`bun run build` 构建 Worker。
 
 ## 配置
 
