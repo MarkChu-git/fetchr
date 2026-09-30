@@ -1,4 +1,4 @@
-import type { Extractor } from "@fetchr/core"
+import { hostAllowed, type Extractor } from "@fetchr/core"
 import { Effect, Schema } from "effect"
 import { failure } from "./failure"
 import { toMediaPost } from "./parser"
@@ -12,7 +12,7 @@ function isInstagramHttps(url: URL): boolean {
     url.protocol === "https:" &&
     url.username === "" &&
     url.password === "" &&
-    (url.hostname === "www.instagram.com" || url.hostname === "instagram.com")
+    hostAllowed(url.hostname, ["www.instagram.com", "instagram.com"])
   )
 }
 

@@ -153,6 +153,7 @@ export async function runProductExtract(
         error: outcome.failure.code,
         latencyMs: Date.now() - started,
         delivery: [],
+        ...(outcome.failure.cause === undefined ? {} : { cause: outcome.failure.cause }),
       }),
     )
     return { ok: false, code: outcome.failure.code, challenge: false }

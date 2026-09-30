@@ -1,3 +1,4 @@
+import { hostAllowed, hostMatches } from "@fetchr/core"
 import type {
   CanonicalResource,
   ExtractFailure,
@@ -7,13 +8,19 @@ import { Effect } from "effect"
 import { failure } from "./failure"
 
 const shortHost = "v.douyin.com"
-const videoHosts = new Set([
+const videoHosts = [
   "www.douyin.com",
   "douyin.com",
   "m.douyin.com",
   "www.iesdouyin.com",
   "iesdouyin.com",
-])
+] as const
+
+function isVideoHost(hostname: string): boolean {
+  // v.douyin.com is the short-link host. Matching the douyin.com apex would treat it as a video page.
+  if (hostMatches(hostname, shortHost)) return false
+  return hostAllowed(hostname, videoHosts)
+}
 
 function segments(url: URL): readonly string[] {
   return url.pathname.split("/").filter((segment) => segment.length > 0)
@@ -28,7 +35,7 @@ type WorkKind = "video" | "note"
 
 function workId(url: URL): { readonly id: string; readonly kind: WorkKind } | undefined {
   if (url.protocol !== "https:") return undefined
-  if (!videoHosts.has(url.hostname)) return undefined
+  if (!isVideoHost(url.hostname)) return undefined
   const parts = segments(url)
   // The first hop of a short link often stops on iesdouyin. Video is /share/video/{id}. An image note is /share/slides/{id} or /share/note/{id}.
   // Image notes do not belong in the video feed. The canonical URL has to be /note/{id}, or the later step never asks for the images.
@@ -48,7 +55,7 @@ function workId(url: URL): { readonly id: string; readonly kind: WorkKind } | un
 
 function shortCode(url: URL): string | undefined {
   if (url.protocol !== "https:") return undefined
-  if (url.hostname !== shortHost) return undefined
+  if (!hostMatches(url.hostname, shortHost)) return undefined
   const parts = segments(url)
   const code = parts[0]
   if (parts.length !== 1 || code === undefined) return undefined
@@ -58,7 +65,7 @@ function shortCode(url: URL): string | undefined {
 
 function modalId(url: URL): string | undefined {
   if (url.protocol !== "https:") return undefined
-  if (!videoHosts.has(url.hostname)) return undefined
+  if (!isVideoHost(url.hostname)) return undefined
   // A link copied from the website usually stops on /jingxuan?modal_id= or a profile modal_id, with no /video/ in the path. That number is the work id.
   return digits(url.searchParams.get("modal_id") ?? undefined)
 }

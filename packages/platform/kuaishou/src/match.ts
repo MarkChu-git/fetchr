@@ -1,3 +1,5 @@
+import { hostMatches } from "@fetchr/core"
+
 const idPattern = /^[0-9A-Za-z]+$/
 
 export function match(url: URL): boolean {
@@ -9,14 +11,14 @@ export function idFromUrl(url: URL): string | undefined {
 }
 
 function shortCode(url: URL): string | undefined {
-  if (!isHttp(url) || url.hostname !== "v.kuaishou.com") return undefined
+  if (!isHttp(url) || !hostMatches(url.hostname, "v.kuaishou.com")) return undefined
   const [code, extra] = pathParts(url)
   if (code === undefined || extra !== undefined || !idPattern.test(code)) return undefined
   return code
 }
 
 function shortVideoId(url: URL): string | undefined {
-  if (!isHttp(url) || url.hostname !== "www.kuaishou.com") return undefined
+  if (!isHttp(url) || !hostMatches(url.hostname, "www.kuaishou.com")) return undefined
   const [kind, id, extra] = pathParts(url)
   if (kind !== "short-video" || id === undefined || extra !== undefined) return undefined
   if (!idPattern.test(id)) return undefined

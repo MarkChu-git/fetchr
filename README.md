@@ -42,6 +42,12 @@ A failure replaces the empty state with one of these messages:
 | The post is private | 这条内容是私密的 |
 | The platform requires a login | 需要登录才能查看 |
 | The post cannot be found | 没有找到这条内容 |
+| The page has no downloadable media data | 页面里没有可下载的内容 |
+| The upstream blocked the request | 上游暂时拦截了这次请求 |
+| The page data format changed | 页面数据格式变了 |
+| The link did not resolve | 这个链接没有解析成功 |
+| The upstream sent no usable page | 上游没有返回可用页面 |
+| The upstream timed out | 上游没有及时响应 |
 | The rate limit is exceeded | 请求太频繁，请稍后再试 |
 | Digital rights management (DRM) blocks the file | 这条内容有版权保护，不能下载 |
 | The region cannot play it | 这个地区看不了这条内容 |
@@ -56,7 +62,7 @@ Fetchr does the following:
 - Bilibili public videos on `www.bilibili.com` and `m.bilibili.com`, and short links on `b23.tv`. The browser combines separate picture and audio.
 - YouTube `/watch` URLs on `www.youtube.com`, `m.youtube.com`, `music.youtube.com`, and `youtube-nocookie.com`, plus `youtu.be` links.
 - X and Twitter status URLs on `x.com`, `www.x.com`, `twitter.com`, and `www.twitter.com`, when the post is visible without a login.
-- 小红书 `/explore/` and `xhslink.com` links, Instagram `/p/` and `/reel/` posts, TikTok video URLs on `tiktok.com` and `vm.tiktok.com`, and 快手 URLs on `v.kuaishou.com` and `www.kuaishou.com/short-video/`.
+- 小红书 `/explore/` and `xhslink.com` links, Instagram `/p/` and `/reel/` posts, TikTok links on `tiktok.com` (`www`, `m`, `vm`, `vt`), including `/t/` short links and `@user/video` or `@user/photo` paths, and 快手 URLs on `v.kuaishou.com` and `www.kuaishou.com/short-video/`.
 - One Worker, named `fetchr-web`. It keeps no media file and runs no transcoder.
 - An HMAC-SHA256 download token when the browser cannot attach the headers the file host requires. The token expires after 5 minutes. A token that fails verification gets the response 下载链接无效.
 

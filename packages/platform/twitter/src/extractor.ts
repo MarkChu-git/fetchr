@@ -1,14 +1,14 @@
-import type { CanonicalResource, ExtractFailure, Extractor } from "@fetchr/core"
+import { hostAllowed, type CanonicalResource, type ExtractFailure, type Extractor } from "@fetchr/core"
 import { Effect, Schema } from "effect"
 import { postFrom } from "./parser"
 import { SyndicationResult } from "./schema"
 
-const statusHosts = new Set(["x.com", "www.x.com", "twitter.com", "www.twitter.com"])
+const statusHosts = ["x.com", "www.x.com", "twitter.com", "www.twitter.com"] as const
 const statusPath = /^\/[^/]+\/status\/\d+\/?$/
 const SyndicationJson = Schema.fromJsonString(SyndicationResult)
 
 function match(url: URL): boolean {
-  return url.protocol === "https:" && statusHosts.has(url.hostname) && statusPath.test(url.pathname)
+  return url.protocol === "https:" && hostAllowed(url.hostname, statusHosts) && statusPath.test(url.pathname)
 }
 
 function tweetId(resource: CanonicalResource): string | undefined {

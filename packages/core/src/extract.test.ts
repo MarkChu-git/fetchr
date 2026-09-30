@@ -99,6 +99,24 @@ test("stops a pasted URL before Chinese that is glued to it", async () => {
   expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
 })
 
+test("uses the first detected URL that an extractor accepts", async () => {
+  const post = await Effect.runPromise(
+    extract(
+      "skip https://example.com/nope\nthen https://fixture.test/video/demo.",
+      transport,
+      [fixtureExtractor],
+    ),
+  )
+  expect(post.id).toBe("demo")
+})
+
+test("reads a URL wrapped in emoji, newlines, and parentheses", async () => {
+  const post = await Effect.runPromise(
+    extract("🔥 look\n(https://fixture.test/video/demo)\nend", transport, [fixtureExtractor]),
+  )
+  expect(post.canonicalUrl).toBe("https://fixture.test/video/demo")
+})
+
 test("extract fails with INVALID_URL when the input is not a URL", async () => {
   const code = await Effect.runPromise(
     Effect.match(extract("not a url", transport, [fixtureExtractor]), {

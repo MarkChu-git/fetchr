@@ -87,6 +87,8 @@ export interface SafeLog {
   readonly platform?: Platform
   readonly ok: boolean
   readonly error?: ExtractErrorCode
+  /** Platform cause code. It is not a URL and it is not shown in the page. */
+  readonly cause?: string
   readonly latencyMs: number
   readonly delivery: readonly string[]
 }
@@ -97,6 +99,7 @@ export function safeLog(entry: SafeLog): string {
     platform: entry.platform ?? null,
     ok: entry.ok,
     error: entry.error ?? null,
+    ...(entry.cause === undefined ? {} : { cause: entry.cause }),
     latencyMs: entry.latencyMs,
     delivery: entry.delivery,
   })

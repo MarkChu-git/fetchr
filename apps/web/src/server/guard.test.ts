@@ -66,4 +66,19 @@ describe("guards", () => {
     expect(line).not.toContain("authorization")
     expect(line).not.toContain("http")
   })
+
+  test("log line keeps a platform cause without a URL", () => {
+    const line = safeLog({
+      platform: "tiktok",
+      ok: false,
+      error: "PAYLOAD_MISSING",
+      cause: "REHYDRATION_NOT_FOUND",
+      latencyMs: 4,
+      delivery: [],
+    })
+    expect(line).toContain("REHYDRATION_NOT_FOUND")
+    expect(line).toContain("PAYLOAD_MISSING")
+    expect(line).not.toContain("http")
+    expect(line).not.toContain("cookie")
+  })
 })
