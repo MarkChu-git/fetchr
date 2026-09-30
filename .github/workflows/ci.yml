@@ -22,7 +22,7 @@ jobs:
       # dependency-review reads the pull request diff.
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Secret scanning looks through history, not only the latest commit.
           fetch-depth: 0
