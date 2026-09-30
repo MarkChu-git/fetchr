@@ -1,9 +1,8 @@
 import type { ExtractErrorCode, MediaPost } from "@fetchr/core"
-import { failureMessage } from "./failure-message"
 
 export type ExtractOutcome =
   | { readonly ok: true; readonly post: MediaPost }
-  | { readonly ok: false; readonly message: string; readonly challenge: boolean }
+  | { readonly ok: false; readonly code: ExtractErrorCode; readonly challenge: boolean }
 
 interface ExtractBody {
   readonly ok?: boolean
@@ -28,21 +27,20 @@ export async function runExtract(
       }),
     })
   } catch {
-    return { ok: false, message: "解析失败", challenge: false }
+    return { ok: false, code: "EXTRACTOR_BROKEN", challenge: false }
   }
   let body: ExtractBody
   try {
     body = (await response.json()) as ExtractBody
   } catch {
-    return { ok: false, message: "解析失败", challenge: false }
+    return { ok: false, code: "EXTRACTOR_BROKEN", challenge: false }
   }
   if (body.ok === true && body.post !== undefined) {
     return { ok: true, post: body.post }
   }
-  const code = body.code ?? "EXTRACTOR_BROKEN"
   return {
     ok: false,
-    message: failureMessage(code),
+    code: body.code ?? "EXTRACTOR_BROKEN",
     challenge: body.challenge === true,
   }
 }

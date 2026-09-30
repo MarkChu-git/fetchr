@@ -1373,7 +1373,7 @@ Astryx (@astryxdesign/core)
 StyleX
 ```
 
-界面文案用中文。
+界面文案有中文和英文两种。没有 `lang` 时用中文。英文用顶栏的 EN，或地址 `?lang=en`。
 
 Astryx 提供组件和主题。StyleX 写产品自己的布局。不用 Tailwind，不用 shadcn。
 

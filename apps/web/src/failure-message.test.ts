@@ -11,4 +11,7 @@ test("failure copy keeps unsupported, missing media, blocks, and format changes 
   expect(failureMessage("SOURCE_UNAVAILABLE")).toBe("上游没有返回可用页面")
   expect(failureMessage("PAYLOAD_MISSING")).not.toBe(failureMessage("SCHEMA_CHANGED"))
   expect(failureMessage("UPSTREAM_BLOCKED")).not.toBe(failureMessage("SOURCE_UNAVAILABLE"))
+  expect(failureMessage("SOURCE_UNAVAILABLE", "en")).toBe("The upstream sent no usable page")
+  expect(failureMessage("PRIVATE_MEDIA", "en")).toBe("This post is private")
+  expect(failureMessage("SOURCE_UNAVAILABLE", "en")).not.toBe(failureMessage("UPSTREAM_BLOCKED", "en"))
 })

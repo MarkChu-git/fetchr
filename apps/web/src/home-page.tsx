@@ -11,13 +11,14 @@ import { Text } from "@astryxdesign/core/Text"
 import { TextInput } from "@astryxdesign/core/TextInput"
 import { TopNav } from "@astryxdesign/core/TopNav"
 import { VStack } from "@astryxdesign/core/VStack"
-import type { MediaPost } from "@fetchr/core"
+import type { ExtractErrorCode, MediaPost } from "@fetchr/core"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 import * as stylex from "@stylexjs/stylex"
 import { useEffect, useState, type FormEvent } from "react"
+import { failureMessage } from "./failure-message"
+import { localeCookie, pageCopy, type Locale } from "./i18n"
 import { PostView } from "./post-view"
 import { runExtract } from "./run-extract"
-
-const platforms = ["抖音", "哔哩哔哩", "YouTube", "X"] as const
 
 const styles = stylex.create({
   shell: {
@@ -75,14 +76,25 @@ type Status =
   | { readonly state: "idle" }
   | { readonly state: "loading" }
   | { readonly state: "ready"; readonly post: MediaPost }
-  | { readonly state: "error"; readonly message: string; readonly challenge: boolean }
+  | { readonly state: "error"; readonly code: ExtractErrorCode; readonly challenge: boolean }
 
 const turnstileSiteKey = import.meta.env.VITE_TURNSTILE_SITE_KEY
 
+function rememberLocale(locale: Locale) {
+  document.cookie = `${localeCookie}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`
+}
+
 export function HomePage() {
+  const lang: Locale = useSearch({ from: "/" }).lang === "en" ? "en" : "zh"
+  const navigate = useNavigate()
+  const text = pageCopy(lang)
   const [url, setUrl] = useState("")
   const [turnstileToken, setTurnstileToken] = useState<string | undefined>()
   const [status, setStatus] = useState<Status>({ state: "idle" })
+
+  useEffect(() => {
+    rememberLocale(lang)
+  }, [lang])
 
   useEffect(() => {
     if (typeof turnstileSiteKey !== "string" || turnstileSiteKey.length === 0) return
@@ -110,11 +122,11 @@ export function HomePage() {
       }
       setStatus({
         state: "error",
-        message: outcome.message,
+        code: outcome.code,
         challenge: outcome.challenge,
       })
     } catch {
-      setStatus({ state: "error", message: "解析失败", challenge: false })
+      setStatus({ state: "error", code: "EXTRACTOR_BROKEN", challenge: false })
     }
   }
 
@@ -136,9 +148,35 @@ export function HomePage() {
           label="Fetchr"
           heading={<Heading level={1}>Fetchr</Heading>}
           endContent={
-            <Text type="supporting" color="secondary">
-              公开链接
-            </Text>
+            <HStack gap={3} vAlign="center">
+              <Text type="supporting" color="secondary">
+                {text.publicLink}
+              </Text>
+              <HStack gap={1}>
+                <Button
+                  label="中文"
+                  type="button"
+                  size="sm"
+                  variant={lang === "zh" ? "primary" : "secondary"}
+                  aria-pressed={lang === "zh"}
+                  onClick={() => {
+                    rememberLocale("zh")
+                    void navigate({ to: "/", search: {} })
+                  }}
+                />
+                <Button
+                  label="EN"
+                  type="button"
+                  size="sm"
+                  variant={lang === "en" ? "primary" : "secondary"}
+                  aria-pressed={lang === "en"}
+                  onClick={() => {
+                    rememberLocale("en")
+                    void navigate({ to: "/", search: { lang: "en" } })
+                  }}
+                />
+              </HStack>
+            </HStack>
           }
         />
       }
@@ -147,12 +185,12 @@ export function HomePage() {
         <Card padding={5}>
           <VStack gap={4}>
             <Text type="supporting" color="secondary">
-              贴一条公开分享链接，先在这里看，再保存。
+              {text.intro}
             </Text>
-            <form {...stylex.props(styles.form)} onSubmit={onSubmit}>
+            <form {...stylex.props(styles.form)} data-fetchr-paste="" onSubmit={onSubmit}>
               <div {...stylex.props(styles.field)}>
                 <TextInput
-                  label="粘贴链接"
+                  label={text.pasteLabel}
                   value={url}
                   onChange={setUrl}
                   htmlName="url"
@@ -163,7 +201,7 @@ export function HomePage() {
               </div>
               <div {...stylex.props(styles.submit)}>
                 <Button
-                  label="解析"
+                  label={text.submit}
                   type="submit"
                   variant="primary"
                   size="lg"
@@ -173,7 +211,7 @@ export function HomePage() {
               </div>
             </form>
             <HStack gap={2} wrap="wrap">
-              {platforms.map((name) => (
+              {text.platforms.map((name) => (
                 <Badge key={name} label={name} variant="neutral" />
               ))}
             </HStack>
@@ -200,7 +238,7 @@ export function HomePage() {
                 </VStack>
               </HStack>
               <Text type="supporting" color="secondary">
-                正在解析
+                {text.extracting}
               </Text>
             </VStack>
           </Card>
@@ -208,20 +246,20 @@ export function HomePage() {
         {status.state === "error" ? (
           <Card variant="muted" width="100%" xstyle={styles.stage}>
             <div role="alert">
-              <EmptyState title={status.message} icon={<Icon icon="search" size="lg" />} />
+              <EmptyState title={failureMessage(status.code, lang)} icon={<Icon icon="search" size="lg" />} />
             </div>
           </Card>
         ) : null}
         {status.state === "idle" ? (
           <Card variant="muted" width="100%" xstyle={styles.stage}>
             <EmptyState
-              title="还没有内容"
-              description="解析之后，视频会出现在这里。"
+              title={text.emptyTitle}
+              description={text.emptyDescription}
               icon={<Icon icon="search" size="lg" />}
             />
           </Card>
         ) : null}
-        {status.state === "ready" ? <PostView post={status.post} /> : null}
+        {status.state === "ready" ? <PostView post={status.post} locale={lang} /> : null}
       </div>
     </AppShell>
   )

@@ -1,9 +1,10 @@
 import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
-import { HeadContent, Scripts, createRootRoute } from "@tanstack/react-router"
+import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
+import { htmlLang, localeFromSearch } from "../i18n"
 import "../styles.css"
 
 export const Route = createRootRoute({
@@ -37,8 +38,10 @@ export const Route = createRootRoute({
 })
 
 function RootDocument({ children }: { readonly children: ReactNode }) {
+  const searchStr = useRouterState({ select: (state) => state.location.searchStr })
+  const lang = htmlLang(localeFromSearch(new URLSearchParams(searchStr).get("lang")))
   return (
-    <html lang="zh-CN">
+    <html lang={lang}>
       <head>
         {/* Must be the first CSS in the document. StyleX opens astryx-base first. If reset opens after that, it covers the buttons and inputs. */}
         <style>{`@layer reset, astryx-base, astryx-theme, product;`}</style>
@@ -48,6 +51,13 @@ function RootDocument({ children }: { readonly children: ReactNode }) {
         ) : null}
       </head>
       <body>
+        {/* The paste form is interactive in the server HTML. Stop that submit before React attaches, or the browser navigates to ?url= and drops ?lang=. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "document.addEventListener('submit',function(event){var form=event.target;if(form instanceof HTMLFormElement&&form.hasAttribute('data-fetchr-paste'))event.preventDefault()})",
+          }}
+        />
         <Theme theme={stoneTheme} mode="system">
           {children}
         </Theme>

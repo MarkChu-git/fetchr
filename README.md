@@ -26,45 +26,47 @@ Local development signs downloads with a built-in key. A production deploy needs
 
 ## Usage
 
-Use the field labeled **粘贴链接**. Paste a URL, or the whole share sentence. Fetchr keeps the `http` or `https` URL, strips zero-width characters, and drops trailing punctuation.
+The page opens in Chinese. **中文** and **EN** in the top bar switch the language. English also opens at `?lang=en`. The choice is stored in a cookie, so a later download error uses the same language.
 
-Press **解析**. The post replaces the empty state. Press **下载** to save the file. When picture and audio arrive as two files, press **合成并下载**. The browser combines them and saves `fetchr.mp4`. A DASH playlist shows 这是一份 DASH 清单, and **下载** saves the manifest.
+Use the field labeled **Paste link**. Paste a URL, or the whole share sentence. Fetchr keeps the `http` or `https` URL, strips zero-width characters, and drops trailing punctuation.
+
+Press **Extract**. The post replaces the empty state. Press **Download** to save the file. When picture and audio arrive as two files, press **Combine and download**. The browser combines them and saves `fetchr.mp4`. A DASH playlist shows "This is a DASH manifest", and **Download** saves the manifest.
 
 Leave the address bar on this page.
 
-The page names 抖音, 哔哩哔哩, YouTube, and X. The same field also accepts 小红书, Instagram, TikTok, and 快手.
+The page names Douyin, Bilibili, YouTube, and X. The same field also accepts Xiaohongshu, Instagram, TikTok, and Kuaishou.
 
 A failure replaces the empty state with one of these messages:
 
 | Situation | Message |
 | --- | --- |
-| The text has no usable URL, or no extractor matches it | 这个链接不支持 |
-| The post is private | 这条内容是私密的 |
-| The platform requires a login | 需要登录才能查看 |
-| The post cannot be found | 没有找到这条内容 |
-| The page has no downloadable media data | 页面里没有可下载的内容 |
-| The upstream blocked the request | 上游暂时拦截了这次请求 |
-| The page data format changed | 页面数据格式变了 |
-| The link did not resolve | 这个链接没有解析成功 |
-| The upstream sent no usable page | 上游没有返回可用页面 |
-| The upstream timed out | 上游没有及时响应 |
-| The rate limit is exceeded | 请求太频繁，请稍后再试 |
-| Digital rights management (DRM) blocks the file | 这条内容有版权保护，不能下载 |
-| The region cannot play it | 这个地区看不了这条内容 |
-| Any other failure | 解析失败 |
+| The text has no usable URL, or no extractor matches it | This link is not supported |
+| The post is private | This post is private |
+| The platform requires a login | You need to sign in to view this |
+| The post cannot be found | This post was not found |
+| The page has no downloadable media data | This page has nothing to download |
+| The upstream blocked the request | The upstream blocked this request |
+| The page data format changed | The page data format changed |
+| The link did not resolve | This link did not resolve |
+| The upstream sent no usable page | The upstream sent no usable page |
+| The upstream timed out | The upstream did not respond in time |
+| The rate limit is exceeded | Too many requests. Try again in a moment. |
+| Digital rights management (DRM) blocks the file | This post is protected and cannot be downloaded |
+| The region cannot play it | This region cannot play this post |
+| Any other failure | Could not parse this link |
 
 ## Features
 
 Fetchr does the following:
 
-- Douyin public videos and image notes load without a saved login. Short links on `v.douyin.com` work, and so do page URLs whose id is only `modal_id`.
-- A Douyin video is saved from the original file (`ratio=default`). If that play id is missing, Fetchr prefers a play URL without `playwm`, and rewrites a `playwm` URL to `play` when no other URL is present. An image note is saved from the last non-webp URL in `url_list`. `download_url_list` stays unread because those URLs carry a watermark.
+- Douyin image notes load without a saved login. A link that points at one video returns "The upstream sent no usable page": the public feed lists other works, and the detail endpoint refuses the Worker. Short links on `v.douyin.com` still resolve. A page URL whose id is only `modal_id` resolves when that work is an image note.
+- When a Douyin video payload is present, the saved file is the original (`ratio=default`). If that play id is missing, Fetchr prefers a play URL without `playwm`, and rewrites a `playwm` URL to `play` when no other URL is present. An image note is saved from the last non-webp URL in `url_list`. `download_url_list` stays unread because those URLs carry a watermark.
 - Bilibili public videos on `www.bilibili.com` and `m.bilibili.com`, and short links on `b23.tv`. The browser combines separate picture and audio.
 - YouTube `/watch` URLs on `www.youtube.com`, `m.youtube.com`, `music.youtube.com`, and `youtube-nocookie.com`, plus `youtu.be` links.
 - X and Twitter status URLs on `x.com`, `www.x.com`, `twitter.com`, and `www.twitter.com`, when the post is visible without a login.
 - 小红书 `/explore/` and `xhslink.com` links, Instagram `/p/` and `/reel/` posts, TikTok links on `tiktok.com` (`www`, `m`, `vm`, `vt`), including `/t/` short links and `@user/video` or `@user/photo` paths, and 快手 URLs on `v.kuaishou.com` and `www.kuaishou.com/short-video/`.
 - One Worker, named `fetchr-web`. It keeps no media file and runs no transcoder.
-- An HMAC-SHA256 download token when the browser cannot attach the headers the file host requires. The token expires after 5 minutes. A token that fails verification gets the response 下载链接无效.
+- An HMAC-SHA256 download token when the browser cannot attach the headers the file host requires. The token expires after 5 minutes. A token that fails verification returns "This download link is not valid" on the English page and 「下载链接无效」 on the Chinese page.
 
 ## How It Works
 
