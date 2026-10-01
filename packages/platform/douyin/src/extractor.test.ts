@@ -109,6 +109,24 @@ describe("douyin extractor", () => {
     )
   })
 
+  test("matches a short link whose code uses the base64url alphabet", () => {
+    expect(
+      douyinExtractor.match(new URL("https://v.douyin.com/SEuA_uLPhnw/")),
+    ).toBe(true)
+    expect(douyinExtractor.match(new URL("https://v.douyin.com/a-b_c/"))).toBe(
+      true,
+    )
+  })
+
+  test("matches an http short link", () => {
+    expect(douyinExtractor.match(new URL("http://v.douyin.com/abc123/"))).toBe(
+      true,
+    )
+    expect(
+      douyinExtractor.match(new URL("http://www.douyin.com/video/7000000000000000001")),
+    ).toBe(true)
+  })
+
   test("matches an iesdouyin share video url", () => {
     expect(
       douyinExtractor.match(
@@ -302,6 +320,72 @@ describe("douyin extractor", () => {
       ),
     )
     expect(post).toEqual(videoPost)
+  })
+
+  test("resolves an http short link into the same video MediaPost", async () => {
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource("http://v.douyin.com/abc123/"),
+        fixtureTransport({ [videoId]: videoFixture }),
+      ),
+    )
+    expect(post).toEqual(videoPost)
+  })
+
+  test("walks the chain when the first redirect does not name a post", async () => {
+    const transport: Transport = {
+      request(input) {
+        const url = new URL(input.url)
+        if (url.hostname === "v.douyin.com" && url.pathname === "/first/") {
+          return Effect.succeed(
+            new Response(null, {
+              status: 302,
+              headers: { location: "https://v.douyin.com/second/" },
+            }),
+          )
+        }
+        if (url.hostname === "v.douyin.com") {
+          return Effect.succeed(
+            new Response(null, {
+              status: 302,
+              headers: {
+                location: `https://www.douyin.com/video/${videoId}`,
+              },
+            }),
+          )
+        }
+        if (url.hostname === "www.douyin.com") {
+          // The walker only needs the final URL. A 200 page ends the chain.
+          return Effect.succeed(new Response("ok"))
+        }
+        return Effect.succeed(Response.json(videoFixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(resource("https://v.douyin.com/first/"), transport),
+    )
+    expect(post.id).toBe(videoId)
+  })
+
+  test("rejects a short link chain that leaves the douyin hosts", async () => {
+    const transport: Transport = {
+      request(input) {
+        const url = new URL(input.url)
+        if (url.hostname === "v.douyin.com") {
+          return Effect.succeed(
+            new Response(null, {
+              status: 302,
+              headers: { location: "https://example.com/landing" },
+            }),
+          )
+        }
+        return Effect.succeed(Response.json(videoFixture))
+      },
+    }
+    const failure = await failureOf(
+      douyinExtractor.extract(resource("https://v.douyin.com/abc123/"), transport),
+    )
+    expect(failure.code).toBe("RESOLVE_FAILED")
   })
 
   test("normalizes an image post fixture into image media", async () => {

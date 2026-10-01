@@ -1,4 +1,4 @@
-import { hostAllowed, hostMatches } from "@fetchr/core"
+import { hostAllowed, hostMatches, resolveRedirects } from "@fetchr/core"
 import type {
   CanonicalResource,
   ExtractFailure,
@@ -22,6 +22,11 @@ function isVideoHost(hostname: string): boolean {
   return hostAllowed(hostname, videoHosts)
 }
 
+/** Share text sometimes carries the http scheme. Both schemes resolve to the same post. */
+function isHttp(url: URL): boolean {
+  return url.protocol === "https:" || url.protocol === "http:"
+}
+
 function segments(url: URL): readonly string[] {
   return url.pathname.split("/").filter((segment) => segment.length > 0)
 }
@@ -34,7 +39,7 @@ function digits(value: string | undefined): string | undefined {
 type WorkKind = "video" | "note"
 
 function workId(url: URL): { readonly id: string; readonly kind: WorkKind } | undefined {
-  if (url.protocol !== "https:") return undefined
+  if (!isHttp(url)) return undefined
   if (!isVideoHost(url.hostname)) return undefined
   const parts = segments(url)
   // The first hop of a short link often stops on iesdouyin. Video is /share/video/{id}. An image note is /share/slides/{id} or /share/note/{id}.
@@ -54,17 +59,18 @@ function workId(url: URL): { readonly id: string; readonly kind: WorkKind } | un
 }
 
 function shortCode(url: URL): string | undefined {
-  if (url.protocol !== "https:") return undefined
+  if (!isHttp(url)) return undefined
   if (!hostMatches(url.hostname, shortHost)) return undefined
   const parts = segments(url)
   const code = parts[0]
   if (parts.length !== 1 || code === undefined) return undefined
-  if (!/^[A-Za-z0-9]+$/.test(code)) return undefined
+  // Short codes use the base64url alphabet. Real codes contain - and _.
+  if (!/^[A-Za-z0-9_-]+$/.test(code)) return undefined
   return code
 }
 
 function modalId(url: URL): string | undefined {
-  if (url.protocol !== "https:") return undefined
+  if (!isHttp(url)) return undefined
   if (!isVideoHost(url.hostname)) return undefined
   // A link copied from the website usually stops on /jingxuan?modal_id= or a profile modal_id, with no /video/ in the path. That number is the work id.
   return digits(url.searchParams.get("modal_id") ?? undefined)
@@ -113,8 +119,15 @@ export function resolveCanonical(
       )
     }
     const next = new URL(location, resource.url)
+    // The first Location usually names the post already. Take it without spending a second request.
     const work = workId(next) ?? modalWork(next)
-    if (work === undefined) {
+    if (work !== undefined) return canonicalWork(work)
+    // Otherwise walk the rest of the chain. Every hop is rechecked against the SSRF rules and the Douyin allowlist.
+    const finalUrl = yield* resolveRedirects(next, transport, {
+      allow: (url) => hostAllowed(url.hostname, ["douyin.com", "iesdouyin.com"]),
+    })
+    const redirected = workId(finalUrl) ?? modalWork(finalUrl)
+    if (redirected === undefined) {
       return yield* Effect.fail(
         failure(
           "RESOLVE_FAILED",
@@ -122,7 +135,7 @@ export function resolveCanonical(
         ),
       )
     }
-    return canonicalWork(work)
+    return canonicalWork(redirected)
   })
 }
 
