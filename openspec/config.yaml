@@ -8,7 +8,7 @@ context: |
   Proxy is GET /download/:token only. HMAC, 1–5 minute TTL, SSRF checks. No open proxy.
   Client mux uses Mediabunny inside a Web Worker. No ffmpeg.wasm and no client transcode in v1.
   Packages are @fetchr/*. The web client is Chinese. UI is Astryx (@astryxdesign/core, pinned beta) plus StyleX, compiled from source so the Worker ships only the components it uses. Theme starts from Stone and follows the system color mode. No Tailwind, no shadcn. Astryx stays inside apps/web.
-  Proxy tokens are HMAC-SHA256, 5 minutes, and carry only the upstream URL, the headers the Worker must attach, the expiry, and the platform. A client-supplied URL is ignored.
+  Proxy tokens are HMAC-SHA256, 30 minutes, and carry only the upstream URL, the headers the Worker must attach, the expiry, and the platform. A client-supplied URL is ignored.
   Delivery: Direct only when the browser can download a complete file without Referer, Cookie, or User-Agent and without reading bytes. Mux only when the browser can read both streams. Otherwise Proxy. MediaPost owns Delivery. Cache may drop expired URLs; it is not a second domain type.
   CanonicalResource is platform, id, and url. No shared note/reel/short type. No shared Session type. Cookies and signing stay inside the platform package. Core injects Transport only.
   Build order: foundation, core domain, YouTube as the reference extractor (youtubei.js/cf-worker stays inside that package), Xiaohongshu, Douyin, then Instagram, TikTok, Kuaishou, then Bilibili and X.
