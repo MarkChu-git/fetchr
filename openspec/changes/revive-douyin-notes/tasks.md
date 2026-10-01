@@ -13,4 +13,4 @@
 ## 3. 收尾验证
 
 - [x] 3.1 全仓 lint、typecheck、`bun test` 通过;GitNexus detect-changes 无意外影响面
-- [ ] 3.2 真实网络冒烟:CF preview 对真实图文链接返回图片 MediaPost 且图片可下载,视频回归正常,不存在/被过滤的作品返回类型化错误
+- [x] 3.2 真实网络冒烟:CF preview 对真实图文链接返回图片 MediaPost 且图片可下载,视频回归正常,不存在/被过滤的作品返回类型化错误
