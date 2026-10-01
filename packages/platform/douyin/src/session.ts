@@ -1,7 +1,7 @@
 /**
  * A public video needs no login cookie.
- * The mobile feed used to return the requested work. It now ignores aweme_id and returns other recommendations.
- * Web detail from a Worker answers 403, body "Blocked by ArgusSecurityPlugin Uifid Not Found". Do not sign that request.
+ * The public feed answers without a signature and stays the fast path for videos.
+ * The web detail endpoint rejects unsigned requests; signed calls live in detail.ts.
  * The app User-Agent stays because that client still receives a list. A browser User-Agent no longer empties it.
  */
 const appUserAgent =
@@ -51,21 +51,4 @@ export function feedRequest(id: string, attempt: 0 | 1): Request {
       "user-agent": appUserAgent,
     },
   })
-}
-
-/**
- * Image notes are not in the public video feed.
- * slidesinfo returns this note's aweme_details only when request_source=200. No login is required.
- * The first try omits the app identifier, and the Worker fills in a browser identifier. On refusal or an empty list, the second try asks the same public API with the app identifier.
- */
-export function slidesRequest(id: string, attempt: 0 | 1 = 0): Request {
-  const url = new URL("https://www.iesdouyin.com/web/api/v2/aweme/slidesinfo/")
-  url.searchParams.set("aweme_ids", `[${id}]`)
-  url.searchParams.set("request_source", "200")
-  const headers = new Headers({
-    accept: "application/json",
-    referer: "https://www.iesdouyin.com/",
-  })
-  if (attempt === 1) headers.set("user-agent", appUserAgent)
-  return new Request(url, { headers })
 }

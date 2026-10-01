@@ -215,16 +215,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Web detail is `{ aweme_detail }`. The mobile feed mixes the target work into `aweme_list`.
- * slidesinfo puts it in `aweme_details`. Never take item 0. That would download a different work.
+ * Never take item 0. That would download a different work.
  */
 export function selectDetail(input: unknown, id: string): unknown | undefined {
   if (!isRecord(input)) return undefined
   if ("aweme_detail" in input) return input
-  const list = Array.isArray(input.aweme_details)
-    ? input.aweme_details
-    : Array.isArray(input.aweme_list)
-      ? input.aweme_list
-      : undefined
+  const list = Array.isArray(input.aweme_list)
+    ? input.aweme_list
+    : undefined
   if (list === undefined) return undefined
   const item = list.find(
     (entry) => isRecord(entry) && String(entry.aweme_id) === id,

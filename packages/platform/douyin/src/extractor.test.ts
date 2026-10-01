@@ -261,10 +261,27 @@ describe("douyin extractor", () => {
     expect(post).toEqual(videoPost)
   })
 
-  test("fails when the feed does not include this video", async () => {
+  test("fails when neither the feed nor the web detail has this video", async () => {
     const transport: Transport = {
-      request() {
-        return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
+      request(input) {
+        const url = new URL(input.url)
+        if (url.hostname === "ttwid.bytedance.com") {
+          return Effect.succeed(
+            new Response("{}", {
+              headers: { "set-cookie": "ttwid=test-cookie; Path=/" },
+            }),
+          )
+        }
+        if (url.pathname.includes("/aweme/v1/feed/")) {
+          return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
+        }
+        return Effect.succeed(
+          Response.json({
+            status_code: 0,
+            aweme_detail: null,
+            filter_detail: { aweme_id: videoId, filter_reason: "" },
+          }),
+        )
       },
     }
     const failure = await failureOf(
@@ -273,7 +290,31 @@ describe("douyin extractor", () => {
         transport,
       ),
     )
-    expect(failure.code).toBe("SOURCE_UNAVAILABLE")
+    expect(failure.code).toBe("MEDIA_NOT_FOUND")
+  })
+
+  test("reports UPSTREAM_BLOCKED when the signed detail cannot bootstrap", async () => {
+    const transport: Transport = {
+      request(input) {
+        const url = new URL(input.url)
+        if (url.pathname.includes("/aweme/v1/feed/")) {
+          return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
+        }
+        if (url.hostname === "ttwid.bytedance.com") {
+          // No set-cookie on the register answer, so no ttwid exists.
+          return Effect.succeed(new Response("{}"))
+        }
+        // A refused signature answers 200 with an empty body.
+        return Effect.succeed(new Response(""))
+      },
+    }
+    const failure = await failureOf(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/video/${videoId}`, videoId),
+        transport,
+      ),
+    )
+    expect(failure.code).toBe("UPSTREAM_BLOCKED")
   })
 
   test("normalizes a video fixture into a MediaPost", async () => {
@@ -434,7 +475,7 @@ describe("douyin extractor", () => {
     ).toBe(true)
   })
 
-  test("reads a note from slidesinfo without fetching the share page", async () => {
+  test("reads a note from the signed web detail without fetching the share page", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
@@ -450,12 +491,14 @@ describe("douyin extractor", () => {
             }),
           )
         }
-        return Effect.succeed(
-          Response.json({
-            status_code: 0,
-            aweme_details: [{ aweme_id: "other" }, imagePostFixture.aweme_detail],
-          }),
-        )
+        if (url.hostname === "ttwid.bytedance.com") {
+          return Effect.succeed(
+            new Response("{}", {
+              headers: { "set-cookie": "ttwid=test-cookie; Path=/" },
+            }),
+          )
+        }
+        return Effect.succeed(Response.json(imagePostFixture))
       },
     }
     const post = await Effect.runPromise(
@@ -472,15 +515,13 @@ describe("douyin extractor", () => {
       type: "direct",
       url: "https://cdn.example/images/two.jpg",
     })
-    const slides = seen.find((item) => item.url.includes("slidesinfo"))
-    expect(slides).toBeDefined()
-    if (slides === undefined) return
-    const slidesUrl = new URL(slides.url)
-    expect(slidesUrl.searchParams.get("aweme_ids")).toBe(`[${imageId}]`)
-    expect(slidesUrl.searchParams.get("request_source")).toBe("200")
-    expect(slidesUrl.searchParams.has("a_bogus")).toBe(false)
-    expect(slides.headers.get("cookie")).toBeNull()
-    expect(slides.headers.get("user-agent")).toBeNull()
+    const detail = seen.find((item) => item.url.includes("aweme/detail"))
+    expect(detail).toBeDefined()
+    if (detail === undefined) return
+    const detailUrl = new URL(detail.url)
+    expect(detailUrl.searchParams.get("aweme_id")).toBe(imageId)
+    expect(detailUrl.searchParams.has("a_bogus")).toBe(true)
+    expect(detail.headers.get("cookie")).toContain("ttwid=")
     expect(seen.some((item) => item.url.includes("/share/slides"))).toBe(false)
     expect(seen.some((item) => item.url.includes("/aweme/v1/feed/"))).toBe(false)
   })
@@ -490,30 +531,36 @@ describe("douyin extractor", () => {
       douyinExtractor.extract(
         resource(`https://www.douyin.com/note/${imageId}`),
         {
-          request() {
+          request(input) {
+            const url = new URL(input.url)
+            if (url.hostname === "ttwid.bytedance.com") {
+              return Effect.succeed(
+                new Response("{}", {
+                  headers: { "set-cookie": "ttwid=test-cookie; Path=/" },
+                }),
+              )
+            }
             return Effect.succeed(
               Response.json({
                 status_code: 0,
-                aweme_details: [
-                  {
-                    aweme_id: imageId,
-                    desc: "signed images",
-                    private_status: null,
-                    images: [
-                      {
-                        url_list: [
-                          "https://p3-sign.douyinpic.com/tos/preview.webp",
-                          "https://p3-sign.douyinpic.com/tos/original.jpeg",
-                        ],
-                        download_url_list: [
-                          "https://p3-sign.douyinpic.com/tos/watermark.jpeg",
-                        ],
-                        width: 1280,
-                        height: 854,
-                      },
-                    ],
-                  },
-                ],
+                aweme_detail: {
+                  aweme_id: imageId,
+                  desc: "signed images",
+                  private_status: null,
+                  images: [
+                    {
+                      url_list: [
+                        "https://p3-sign.douyinpic.com/tos/preview.webp",
+                        "https://p3-sign.douyinpic.com/tos/original.jpeg",
+                      ],
+                      download_url_list: [
+                        "https://p3-sign.douyinpic.com/tos/watermark.jpeg",
+                      ],
+                      width: 1280,
+                      height: 854,
+                    },
+                  ],
+                },
               }),
             )
           },
@@ -531,20 +578,25 @@ describe("douyin extractor", () => {
     expect(delivery.upstreamHeaders).toEqual({ Referer: "https://www.douyin.com/" })
   })
 
-  test("retries slidesinfo with the app user agent when the first list is empty", async () => {
+  test("retries the web detail with a fresh cookie when the first answer is empty", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
         seen.push(input)
-        if (seen.length === 1) {
-          return Effect.succeed(Response.json({ status_code: 0, aweme_details: [] }))
+        const url = new URL(input.url)
+        if (url.hostname === "ttwid.bytedance.com") {
+          return Effect.succeed(
+            new Response("{}", {
+              headers: { "set-cookie": "ttwid=test-cookie; Path=/" },
+            }),
+          )
         }
-        return Effect.succeed(
-          Response.json({
-            status_code: 0,
-            aweme_details: [imagePostFixture.aweme_detail],
-          }),
-        )
+        const details = seen.filter((item) => item.url.includes("aweme/detail"))
+        if (details.length === 1) {
+          // A refused signature answers 200 with an empty body.
+          return Effect.succeed(new Response(""))
+        }
+        return Effect.succeed(Response.json(imagePostFixture))
       },
     }
     const post = await Effect.runPromise(
@@ -554,13 +606,16 @@ describe("douyin extractor", () => {
       ),
     )
     expect(post.id).toBe(imageId)
-    expect(seen).toHaveLength(2)
-    expect(seen[0]?.headers.get("user-agent")).toBeNull()
-    expect(seen[1]?.headers.get("user-agent")).toContain("aweme")
-    expect(seen.every((item) => item.headers.get("cookie") === null)).toBe(true)
+    const details = seen.filter((item) => item.url.includes("aweme/detail"))
+    expect(details).toHaveLength(2)
     expect(
-      seen.every((item) => new URL(item.url).searchParams.has("a_bogus") === false),
+      details.every((item) =>
+        new URL(item.url).searchParams.has("a_bogus"),
+      ),
     ).toBe(true)
+    expect(details.every((item) => item.headers.get("cookie") !== null)).toBe(
+      true,
+    )
   })
 
   test("matches a jingxuan or profile url that only carries modal_id", () => {
@@ -587,7 +642,7 @@ describe("douyin extractor", () => {
     ).toBe(false)
   })
 
-  test("reads a jingxuan modal id from the public feed and skips slidesinfo", async () => {
+  test("reads a jingxuan modal id from the public feed and skips the web detail", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
@@ -604,10 +659,13 @@ describe("douyin extractor", () => {
     expect(post.id).toBe(videoId)
     expect(post.canonicalUrl).toBe(`https://www.douyin.com/video/${videoId}`)
     expect(seen.some((item) => item.url.includes("/aweme/v1/feed/"))).toBe(true)
-    expect(seen.some((item) => item.url.includes("slidesinfo"))).toBe(false)
+    expect(seen.some((item) => item.url.includes("aweme/detail"))).toBe(false)
+    expect(seen.some((item) => item.url.includes("ttwid.bytedance.com"))).toBe(
+      false,
+    )
   })
 
-  test("asks slidesinfo when a modal id is absent from the public feed", async () => {
+  test("falls back to the web detail when the feed misses the work", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
@@ -616,12 +674,14 @@ describe("douyin extractor", () => {
         if (url.pathname.includes("/aweme/v1/feed/")) {
           return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
         }
-        return Effect.succeed(
-          Response.json({
-            status_code: 0,
-            aweme_details: [imagePostFixture.aweme_detail],
-          }),
-        )
+        if (url.hostname === "ttwid.bytedance.com") {
+          return Effect.succeed(
+            new Response("{}", {
+              headers: { "set-cookie": "ttwid=test-cookie; Path=/" },
+            }),
+          )
+        }
+        return Effect.succeed(Response.json(imagePostFixture))
       },
     }
     const post = await Effect.runPromise(
@@ -633,7 +693,9 @@ describe("douyin extractor", () => {
     expect(post.id).toBe(imageId)
     expect(post.canonicalUrl).toBe(`https://www.douyin.com/note/${imageId}`)
     expect(post.media.map((asset) => asset.type)).toEqual(["image", "image"])
-    expect(seen.filter((item) => item.url.includes("slidesinfo"))).toHaveLength(1)
+    expect(
+      seen.filter((item) => item.url.includes("aweme/detail")),
+    ).toHaveLength(1)
     expect(seen.some((item) => item.url.includes("/share/"))).toBe(false)
   })
 
