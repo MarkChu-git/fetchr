@@ -13,6 +13,7 @@ import type { Locale } from "./i18n"
 import { htmlLang, pageCopy } from "./i18n"
 import type { MuxWorkerResult } from "./mux-worker"
 import { useState } from "react"
+import { zipStore, type ZipEntry } from "./zip"
 
 const styles = stylex.create({
   layout: {
@@ -293,6 +294,16 @@ export function PostView({
     const view = imageView(asset)
     return view === undefined ? [] : [view]
   })
+  // Batch covers anything the browser can save directly: direct URLs and sealed proxy tokens.
+  // Mux and playlist deliveries need client work and stay single-file.
+  const batchItems = post.media.flatMap((asset) => {
+    if (isBrowserFallback(asset)) return []
+    if (asset.delivery.type === "direct") {
+      return [{ id: asset.id, href: asset.delivery.url }]
+    }
+    const href = proxyHref(asset.delivery)
+    return href === undefined ? [] : [{ id: asset.id, href }]
+  })
   const thumbnailIsImage = images.some(
     (item) => item.preview === thumbnail || item.download === thumbnail,
   )
@@ -445,6 +456,9 @@ export function PostView({
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
             {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} text={text} /> : null}
+            {batchItems.length > 1 ? (
+              <BatchDownload items={batchItems} post={post} text={text} />
+            ) : null}
             {description !== undefined && description !== title ? (
               <div {...stylex.props(styles.copy)}>
                 <Text type="body" display="block">
@@ -456,6 +470,95 @@ export function PostView({
         </Card>
       </div>
     </div>
+  )
+}
+
+function batchExtension(type: string): string {
+  if (type === "image/jpeg") return ".jpg"
+  if (type === "image/png") return ".png"
+  if (type === "image/webp") return ".webp"
+  if (type === "image/heic") return ".heic"
+  if (type === "video/mp4") return ".mp4"
+  if (type === "video/quicktime") return ".mov"
+  if (type === "audio/mp4") return ".m4a"
+  return ""
+}
+
+/**
+ * Same-origin items zip into one file. A cross-origin read can be blocked by CORS;
+ * those fall back to individual anchor downloads.
+ */
+function BatchDownload({
+  items,
+  post,
+  text,
+}: {
+  readonly items: readonly { readonly id: string; readonly href: string }[]
+  readonly post: MediaPost
+  readonly text: PageCopy
+}) {
+  const [busy, setBusy] = useState(false)
+  const [message, setMessage] = useState<string | undefined>()
+
+  async function onClick() {
+    setBusy(true)
+    setMessage(undefined)
+    try {
+      const entries: ZipEntry[] = []
+      for (const [index, item] of items.entries()) {
+        try {
+          // oxlint-disable-next-line no-await-in-loop
+          const response = await fetch(item.href)
+          if (!response.ok) throw new Error("fetch failed")
+          // oxlint-disable-next-line no-await-in-loop
+          const blob = await response.blob()
+          // Sequential on purpose: each image is a separate upstream fetch. One more lint-disabled await reads the bytes.
+          // oxlint-disable-next-line no-await-in-loop
+          const bytes = await blob.arrayBuffer()
+          entries.push({
+            name: `${post.platform}-${post.id}-${index + 1}${batchExtension(blob.type)}`,
+            data: new Uint8Array(bytes),
+          })
+        } catch {
+          // CORS keeps the bytes unreadable. Save this one directly instead.
+          const anchor = document.createElement("a")
+          anchor.href = item.href
+          anchor.download = ""
+          anchor.click()
+        }
+      }
+      if (entries.length === 0) {
+        setMessage(text.fileUnreadable)
+        return
+      }
+      const blob = zipStore(entries)
+      const objectUrl = URL.createObjectURL(blob)
+      const anchor = document.createElement("a")
+      anchor.href = objectUrl
+      anchor.download = `fetchr-${post.platform}-${post.id}.zip`
+      anchor.click()
+      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <VStack gap={2} width="100%">
+      <Button
+        label={busy ? text.packaging : text.downloadAll}
+        variant="secondary"
+        width="100%"
+        onClick={() => {
+          void onClick()
+        }}
+      />
+      {message !== undefined ? (
+        <Text type="supporting" color="secondary">
+          {message}
+        </Text>
+      ) : null}
+    </VStack>
   )
 }
 

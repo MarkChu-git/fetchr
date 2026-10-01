@@ -67,12 +67,31 @@ const albumPost: MediaPost = {
   ],
 }
 
+const singleImagePost: MediaPost = {
+  platform: "fixture",
+  id: "single",
+  canonicalUrl: "https://fixture.test/image/single",
+  media: [
+    {
+      type: "image",
+      id: "only",
+      delivery: {
+        type: "proxy",
+        token: "pending",
+        upstreamUrl: "https://fixture.test/media/only.jpg",
+        upstreamHeaders: { Referer: "https://fixture.test/" },
+      },
+    },
+  ],
+}
+
 function postFor(url: URL): MediaPost | undefined {
   if (url.protocol !== "https:" || url.hostname !== "fixture.test") {
     return undefined
   }
   if (url.pathname === "/video/demo") return videoPost
   if (url.pathname === "/image/album") return albumPost
+  if (url.pathname === "/image/single") return singleImagePost
   if (url.pathname === "/mux/demo") return muxPost
   return undefined
 }

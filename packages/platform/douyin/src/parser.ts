@@ -101,7 +101,9 @@ function avatarUrl(urls: readonly string[] | undefined): string | undefined {
 }
 
 /**
- * An earlier url_list entry is often a webp preview. The last entry is the jpeg.
+ * An earlier url_list entry is often a webp preview; live photo stills come as HEIC.
+ * Neither renders in a browser <img>. Prefer the last browser-safe entry, but keep
+ * the last http entry when nothing else exists so the asset stays downloadable.
  * download_url_list carries a watermark. Do not read it here.
  */
 function imageUrl(urls: readonly string[] | undefined): string | undefined {
@@ -111,9 +113,9 @@ function imageUrl(urls: readonly string[] | undefined): string | undefined {
   )
   for (let index = http.length - 1; index >= 0; index -= 1) {
     const url = http[index]
-    if (url !== undefined && !isWebp(url)) return url
+    if (url !== undefined && !isWebp(url) && !isHeic(url)) return url
   }
-  return undefined
+  return http[http.length - 1]
 }
 
 function hostNeedsProxy(url: string): boolean {

@@ -478,6 +478,51 @@ describe("douyin extractor", () => {
     expect(failure.code).toBe("PRIVATE_MEDIA")
   })
 
+  test("skips heic stills and keeps the asset when nothing is browser-safe", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_list: [
+        {
+          aweme_id: imageId,
+          desc: "live photo stills",
+          images: [
+            {
+              url_list: [
+                "https://p3-sign.douyinpic.com/tos/still.heic",
+                "https://p3-sign.douyinpic.com/tos/still.jpeg",
+              ],
+            },
+            {
+              url_list: ["https://p3-sign.douyinpic.com/tos/only.webp"],
+            },
+          ],
+        },
+      ],
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/note/${imageId}`),
+        transport,
+      ),
+    )
+    expect(post.media).toHaveLength(2)
+    // The jpeg wins over the HEIC original for the first image.
+    expect(post.media[0]?.delivery).toMatchObject({
+      type: "proxy",
+      upstreamUrl: "https://p3-sign.douyinpic.com/tos/still.jpeg",
+    })
+    // A webp-only list still yields a downloadable asset instead of dropping the image.
+    expect(post.media[1]?.delivery).toMatchObject({
+      type: "proxy",
+      upstreamUrl: "https://p3-sign.douyinpic.com/tos/only.webp",
+    })
+  })
+
   test("matches a slides share url and a note url", () => {
     expect(
       douyinExtractor.match(
