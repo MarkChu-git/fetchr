@@ -9,7 +9,7 @@ import {
 
 const secret = "test-secret"
 const issuedAt = 1_700_000_000_000
-const expiry = 1_700_000_300_000
+const expiry = 1_700_001_800_000
 const upstream = "https://cdn.example.com/video.mp4"
 const headers: Readonly<Record<string, string>> = {
   Referer: "https://www.bilibili.com",
@@ -173,10 +173,10 @@ describe("proxy token", () => {
     expect(token.includes(secret)).toBe(false)
   })
 
-  test("sets expiry five minutes after the injected issuedAt", async () => {
+  test("sets expiry thirty minutes after the injected issuedAt", async () => {
     const token = await signToken()
     const claims = await verify({ token, now: issuedAt, secret })
-    expect(claims.expiry - issuedAt).toBe(5 * 60 * 1000)
+    expect(claims.expiry - issuedAt).toBe(30 * 60 * 1000)
   })
 
   test("accepts a token one millisecond before expiry", async () => {

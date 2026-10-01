@@ -1,7 +1,8 @@
 /**
- * A public video needs no login cookie.
- * The mobile feed used to return the requested work. It now ignores aweme_id and returns other recommendations.
- * Web detail from a Worker answers 403, body "Blocked by ArgusSecurityPlugin Uifid Not Found". Do not sign that request.
+ * A public work needs no login cookie.
+ * The feed honors aweme_id only when the request carries the full client
+ * parameter set. With aweme_id and aid alone it returns recommendations,
+ * and notes never appear. The parameters below are what the app sends.
  * The app User-Agent stays because that client still receives a list. A browser User-Agent no longer empties it.
  */
 const appUserAgent =
@@ -11,6 +12,24 @@ const feedHosts = [
   "https://api5-normal-c-hl.amemv.com/aweme/v1/feed/",
   "https://aweme.snssdk.com/aweme/v1/feed/",
 ] as const
+
+const clientParams: Record<string, string> = {
+  version_name: "32.9.0",
+  version_code: "320901",
+  device_platform: "android",
+  os_version: "13",
+  device_type: "Pixel 7",
+  channel: "aweGW",
+  os_api: "33",
+  screen_width: "1080",
+  screen_height: "2400",
+  dpi: "420",
+  app_language: "zh",
+  locale: "zh-CN",
+  resolution: "1080*2400",
+  ac: "wifi",
+  update_version_code: "32909900",
+}
 
 const videoIdPattern = /^[A-Za-z0-9]+$/
 
@@ -45,27 +64,13 @@ export function feedRequest(id: string, attempt: 0 | 1): Request {
   const url = new URL(base)
   url.searchParams.set("aweme_id", id)
   url.searchParams.set("aid", "1128")
+  for (const [key, value] of Object.entries(clientParams)) {
+    url.searchParams.set(key, value)
+  }
   return new Request(url, {
     headers: {
       accept: "application/json",
       "user-agent": appUserAgent,
     },
   })
-}
-
-/**
- * Image notes are not in the public video feed.
- * slidesinfo returns this note's aweme_details only when request_source=200. No login is required.
- * The first try omits the app identifier, and the Worker fills in a browser identifier. On refusal or an empty list, the second try asks the same public API with the app identifier.
- */
-export function slidesRequest(id: string, attempt: 0 | 1 = 0): Request {
-  const url = new URL("https://www.iesdouyin.com/web/api/v2/aweme/slidesinfo/")
-  url.searchParams.set("aweme_ids", `[${id}]`)
-  url.searchParams.set("request_source", "200")
-  const headers = new Headers({
-    accept: "application/json",
-    referer: "https://www.iesdouyin.com/",
-  })
-  if (attempt === 1) headers.set("user-agent", appUserAgent)
-  return new Request(url, { headers })
 }

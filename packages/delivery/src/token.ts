@@ -3,7 +3,8 @@ import { ProxyTokenError } from "./errors.ts"
 import { assertPublicHttpUrl } from "./public-url.ts"
 
 // Fixed at sign time. The token carries expiry only, so verify compares `now` to that field.
-const proxyTokenTtlMs = 5 * 60 * 1000
+// 30 minutes: a result page is browsed and downloaded over minutes, and the 5 minute window expired mid-session.
+const proxyTokenTtlMs = 30 * 60 * 1000
 
 export interface ProxyTokenClaims {
   readonly url: string

@@ -1233,7 +1233,7 @@ HMAC-SHA256
 TTL：
 
 ```text
-5 minutes
+30 minutes
 ```
 
 token 用 HMAC-SHA256 签。里面只有上游 URL、Worker 要代附的请求头、过期时间和平台。客户端传入的 URL 不算数。见 `docs/adr/0005-proxy-token.md`。

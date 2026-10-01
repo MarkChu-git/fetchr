@@ -76,8 +76,34 @@ function isWebp(url: string): boolean {
   }
 }
 
+function isHeic(url: string): boolean {
+  try {
+    return new URL(url).pathname.toLowerCase().endsWith(".heic")
+  } catch {
+    return false
+  }
+}
+
 /**
- * An earlier url_list entry is often a webp preview. The last entry is the jpeg.
+ * Avatar lists lead with a HEIC variant, which no browser draws in <img>.
+ * Take the last non-HEIC entry, mirroring the webp rule for post images.
+ */
+function avatarUrl(urls: readonly string[] | undefined): string | undefined {
+  if (urls === undefined) return undefined
+  const http = urls.filter(
+    (url) => url.startsWith("https://") || url.startsWith("http://"),
+  )
+  for (let index = http.length - 1; index >= 0; index -= 1) {
+    const url = http[index]
+    if (url !== undefined && !isHeic(url)) return url
+  }
+  return undefined
+}
+
+/**
+ * An earlier url_list entry is often a webp preview; live photo stills come as HEIC.
+ * Neither renders in a browser <img>. Prefer the last browser-safe entry, but keep
+ * the last http entry when nothing else exists so the asset stays downloadable.
  * download_url_list carries a watermark. Do not read it here.
  */
 function imageUrl(urls: readonly string[] | undefined): string | undefined {
@@ -87,9 +113,9 @@ function imageUrl(urls: readonly string[] | undefined): string | undefined {
   )
   for (let index = http.length - 1; index >= 0; index -= 1) {
     const url = http[index]
-    if (url !== undefined && !isWebp(url)) return url
+    if (url !== undefined && !isWebp(url) && !isHeic(url)) return url
   }
-  return undefined
+  return http[http.length - 1]
 }
 
 function hostNeedsProxy(url: string): boolean {
@@ -131,7 +157,7 @@ function playUrl(urls: readonly string[] | undefined): string | undefined {
 
 function authorFrom(author: typeof AuthorPayload.Type | undefined): Author | undefined {
   if (author === undefined) return undefined
-  const avatar = firstHttpUrl(author.avatar_thumb?.url_list)
+  const avatar = avatarUrl(author.avatar_thumb?.url_list)
   const result: Author = {
     ...(author.uid === undefined ? {} : { id: author.uid }),
     ...(author.nickname === undefined ? {} : { name: author.nickname }),
@@ -215,16 +241,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Web detail is `{ aweme_detail }`. The mobile feed mixes the target work into `aweme_list`.
- * slidesinfo puts it in `aweme_details`. Never take item 0. That would download a different work.
+ * Never take item 0. That would download a different work.
  */
 export function selectDetail(input: unknown, id: string): unknown | undefined {
   if (!isRecord(input)) return undefined
   if ("aweme_detail" in input) return input
-  const list = Array.isArray(input.aweme_details)
-    ? input.aweme_details
-    : Array.isArray(input.aweme_list)
-      ? input.aweme_list
-      : undefined
+  const list = Array.isArray(input.aweme_list)
+    ? input.aweme_list
+    : undefined
   if (list === undefined) return undefined
   const item = list.find(
     (entry) => isRecord(entry) && String(entry.aweme_id) === id,

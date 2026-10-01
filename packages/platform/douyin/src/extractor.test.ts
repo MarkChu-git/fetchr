@@ -261,7 +261,7 @@ describe("douyin extractor", () => {
     expect(post).toEqual(videoPost)
   })
 
-  test("fails when the feed does not include this video", async () => {
+  test("fails when the feed does not include this work", async () => {
     const transport: Transport = {
       request() {
         return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
@@ -274,6 +274,66 @@ describe("douyin extractor", () => {
       ),
     )
     expect(failure.code).toBe("SOURCE_UNAVAILABLE")
+  })
+
+  test("picks the browser-renderable avatar when HEIC comes first", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_detail: {
+        ...videoFixture.aweme_detail,
+        author: {
+          ...videoFixture.aweme_detail.author,
+          avatar_thumb: {
+            url_list: [
+              "https://p3.douyinpic.com/aweme/100x100/avatar.heic?from=feed",
+              "https://p3.douyinpic.com/aweme/100x100/avatar.jpeg?from=feed",
+            ],
+          },
+        },
+      },
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/video/${videoId}`, videoId),
+        transport,
+      ),
+    )
+    expect(post.author?.avatar).toBe(
+      "https://p3.douyinpic.com/aweme/100x100/avatar.jpeg?from=feed",
+    )
+  })
+
+  test("omits the avatar when every variant is HEIC", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_detail: {
+        ...videoFixture.aweme_detail,
+        author: {
+          ...videoFixture.aweme_detail.author,
+          avatar_thumb: {
+            url_list: ["https://p3.douyinpic.com/aweme/100x100/avatar.heic"],
+          },
+        },
+      },
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/video/${videoId}`, videoId),
+        transport,
+      ),
+    )
+    expect(post.author?.avatar).toBeUndefined()
+    expect(post.author?.name).toBe("fixture-author")
   })
 
   test("normalizes a video fixture into a MediaPost", async () => {
@@ -418,6 +478,51 @@ describe("douyin extractor", () => {
     expect(failure.code).toBe("PRIVATE_MEDIA")
   })
 
+  test("skips heic stills and keeps the asset when nothing is browser-safe", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_list: [
+        {
+          aweme_id: imageId,
+          desc: "live photo stills",
+          images: [
+            {
+              url_list: [
+                "https://p3-sign.douyinpic.com/tos/still.heic",
+                "https://p3-sign.douyinpic.com/tos/still.jpeg",
+              ],
+            },
+            {
+              url_list: ["https://p3-sign.douyinpic.com/tos/only.webp"],
+            },
+          ],
+        },
+      ],
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/note/${imageId}`),
+        transport,
+      ),
+    )
+    expect(post.media).toHaveLength(2)
+    // The jpeg wins over the HEIC original for the first image.
+    expect(post.media[0]?.delivery).toMatchObject({
+      type: "proxy",
+      upstreamUrl: "https://p3-sign.douyinpic.com/tos/still.jpeg",
+    })
+    // A webp-only list still yields a downloadable asset instead of dropping the image.
+    expect(post.media[1]?.delivery).toMatchObject({
+      type: "proxy",
+      upstreamUrl: "https://p3-sign.douyinpic.com/tos/only.webp",
+    })
+  })
+
   test("matches a slides share url and a note url", () => {
     expect(
       douyinExtractor.match(
@@ -434,7 +539,7 @@ describe("douyin extractor", () => {
     ).toBe(true)
   })
 
-  test("reads a note from slidesinfo without fetching the share page", async () => {
+  test("reads a note from the feed without fetching the share page", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
@@ -453,7 +558,7 @@ describe("douyin extractor", () => {
         return Effect.succeed(
           Response.json({
             status_code: 0,
-            aweme_details: [{ aweme_id: "other" }, imagePostFixture.aweme_detail],
+            aweme_list: [{ aweme_id: "other" }, imagePostFixture.aweme_detail],
           }),
         )
       },
@@ -472,17 +577,15 @@ describe("douyin extractor", () => {
       type: "direct",
       url: "https://cdn.example/images/two.jpg",
     })
-    const slides = seen.find((item) => item.url.includes("slidesinfo"))
-    expect(slides).toBeDefined()
-    if (slides === undefined) return
-    const slidesUrl = new URL(slides.url)
-    expect(slidesUrl.searchParams.get("aweme_ids")).toBe(`[${imageId}]`)
-    expect(slidesUrl.searchParams.get("request_source")).toBe("200")
-    expect(slidesUrl.searchParams.has("a_bogus")).toBe(false)
-    expect(slides.headers.get("cookie")).toBeNull()
-    expect(slides.headers.get("user-agent")).toBeNull()
+    const feed = seen.find((item) => item.url.includes("/aweme/v1/feed/"))
+    expect(feed).toBeDefined()
+    if (feed === undefined) return
+    const feedUrl = new URL(feed.url)
+    expect(feedUrl.searchParams.get("aweme_id")).toBe(imageId)
+    // The feed honors aweme_id only with the full client parameter set.
+    expect(feedUrl.searchParams.get("version_code")).toBe("320901")
     expect(seen.some((item) => item.url.includes("/share/slides"))).toBe(false)
-    expect(seen.some((item) => item.url.includes("/aweme/v1/feed/"))).toBe(false)
+    expect(seen.some((item) => item.url.includes("ttwid"))).toBe(false)
   })
 
   test("uses the jpeg and proxies douyin image hosts", async () => {
@@ -494,7 +597,7 @@ describe("douyin extractor", () => {
             return Effect.succeed(
               Response.json({
                 status_code: 0,
-                aweme_details: [
+                aweme_list: [
                   {
                     aweme_id: imageId,
                     desc: "signed images",
@@ -531,38 +634,6 @@ describe("douyin extractor", () => {
     expect(delivery.upstreamHeaders).toEqual({ Referer: "https://www.douyin.com/" })
   })
 
-  test("retries slidesinfo with the app user agent when the first list is empty", async () => {
-    const seen: Request[] = []
-    const transport: Transport = {
-      request(input) {
-        seen.push(input)
-        if (seen.length === 1) {
-          return Effect.succeed(Response.json({ status_code: 0, aweme_details: [] }))
-        }
-        return Effect.succeed(
-          Response.json({
-            status_code: 0,
-            aweme_details: [imagePostFixture.aweme_detail],
-          }),
-        )
-      },
-    }
-    const post = await Effect.runPromise(
-      douyinExtractor.extract(
-        resource(`https://www.douyin.com/note/${imageId}`),
-        transport,
-      ),
-    )
-    expect(post.id).toBe(imageId)
-    expect(seen).toHaveLength(2)
-    expect(seen[0]?.headers.get("user-agent")).toBeNull()
-    expect(seen[1]?.headers.get("user-agent")).toContain("aweme")
-    expect(seen.every((item) => item.headers.get("cookie") === null)).toBe(true)
-    expect(
-      seen.every((item) => new URL(item.url).searchParams.has("a_bogus") === false),
-    ).toBe(true)
-  })
-
   test("matches a jingxuan or profile url that only carries modal_id", () => {
     expect(
       douyinExtractor.match(
@@ -587,7 +658,7 @@ describe("douyin extractor", () => {
     ).toBe(false)
   })
 
-  test("reads a jingxuan modal id from the public feed and skips slidesinfo", async () => {
+  test("reads a jingxuan modal id from the public feed", async () => {
     const seen: Request[] = []
     const transport: Transport = {
       request(input) {
@@ -604,22 +675,16 @@ describe("douyin extractor", () => {
     expect(post.id).toBe(videoId)
     expect(post.canonicalUrl).toBe(`https://www.douyin.com/video/${videoId}`)
     expect(seen.some((item) => item.url.includes("/aweme/v1/feed/"))).toBe(true)
-    expect(seen.some((item) => item.url.includes("slidesinfo"))).toBe(false)
+    expect(seen.every((item) => item.url.includes("/aweme/v1/feed/"))).toBe(true)
   })
 
-  test("asks slidesinfo when a modal id is absent from the public feed", async () => {
-    const seen: Request[] = []
+  test("a modal id pointing to a note resolves through the feed and rewrites the canonical URL", async () => {
     const transport: Transport = {
-      request(input) {
-        seen.push(input)
-        const url = new URL(input.url)
-        if (url.pathname.includes("/aweme/v1/feed/")) {
-          return Effect.succeed(Response.json({ status_code: 0, aweme_list: [] }))
-        }
+      request() {
         return Effect.succeed(
           Response.json({
             status_code: 0,
-            aweme_details: [imagePostFixture.aweme_detail],
+            aweme_list: [imagePostFixture.aweme_detail],
           }),
         )
       },
@@ -633,8 +698,6 @@ describe("douyin extractor", () => {
     expect(post.id).toBe(imageId)
     expect(post.canonicalUrl).toBe(`https://www.douyin.com/note/${imageId}`)
     expect(post.media.map((asset) => asset.type)).toEqual(["image", "image"])
-    expect(seen.filter((item) => item.url.includes("slidesinfo"))).toHaveLength(1)
-    expect(seen.some((item) => item.url.includes("/share/"))).toBe(false)
   })
 
   test("follows a short link that lands on a jingxuan modal id", async () => {
