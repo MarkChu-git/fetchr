@@ -204,6 +204,39 @@ function byteRange(value: string | null): string | undefined {
   return value
 }
 
+/** The saved file keeps a name the OS can open. Prefer the upstream content type; fall back to the URL path. */
+function extensionFor(type: string | null, url: string): string {
+  switch (type) {
+    case "image/jpeg":
+      return ".jpg"
+    case "image/png":
+      return ".png"
+    case "image/webp":
+      return ".webp"
+    case "image/heic":
+      return ".heic"
+    case "video/mp4":
+      return ".mp4"
+    case "video/quicktime":
+      return ".mov"
+    case "audio/mp4":
+      return ".m4a"
+    case "audio/mpeg":
+      return ".mp3"
+  }
+  try {
+    const leaf = new URL(url).pathname.split("/").pop() ?? ""
+    const dot = leaf.lastIndexOf(".")
+    if (dot > 0) {
+      const ext = leaf.slice(dot)
+      if (/^\.[a-z0-9]{2,5}$/i.test(ext)) return ext
+    }
+  } catch {
+    // Fall through to no extension.
+  }
+  return ""
+}
+
 /**
  * Fetch only the upstream stored in the token. A URL supplied by the caller is ignored.
  * inline is for the in-page video preview. Download links omit it and stay attachments.
@@ -277,7 +310,7 @@ export async function openProxyDownload(
   const disposition = incoming?.inline === true ? "inline" : "attachment"
   headers.set(
     "content-disposition",
-    `${disposition}; filename="${claims.platform}-${claims.expiry}"`,
+    `${disposition}; filename="${claims.platform}-${claims.expiry}${extensionFor(type, claims.url)}"`,
   )
   // Stream the upstream body. Do not read the whole video into the Worker.
   return new Response(upstream.body, { status: upstream.status, headers })

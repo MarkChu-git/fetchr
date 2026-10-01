@@ -174,7 +174,28 @@ describe("openProxyDownload", () => {
     expect(response.headers.get("content-range")).toBe("bytes 0-7/8")
     expect(response.headers.get("accept-ranges")).toBe("bytes")
     expect(response.headers.get("content-disposition")).toMatch(
-      /^inline; filename="bilibili-\d+"$/,
+      /^inline; filename="bilibili-\d+\.mp4"$/,
+    )
+  })
+
+  test("names the download with an extension from the upstream content type", async () => {
+    resetGuards()
+    const fetchImpl = (async (_input: unknown, _init?: unknown) =>
+      new Response(new Uint8Array([0xff, 0xd8]), {
+        status: 200,
+        headers: { "content-type": "image/jpeg" },
+      })) as unknown as typeof fetch
+    const token = await sign({
+      url: "https://p3-sign.douyinpic.com/tos/image-id",
+      headers: { Referer: "https://www.douyin.com/" },
+      platform: "douyin",
+      issuedAt: 1_000,
+      secret: proxySecret(),
+    })
+    const response = await openProxyDownload(token, 1_000, "203.0.113.15", fetchImpl)
+    expect(response.status).toBe(200)
+    expect(response.headers.get("content-disposition")).toMatch(
+      /^attachment; filename="douyin-\d+\.jpg"$/,
     )
   })
 })
