@@ -76,6 +76,30 @@ function isWebp(url: string): boolean {
   }
 }
 
+function isHeic(url: string): boolean {
+  try {
+    return new URL(url).pathname.toLowerCase().endsWith(".heic")
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Avatar lists lead with a HEIC variant, which no browser draws in <img>.
+ * Take the last non-HEIC entry, mirroring the webp rule for post images.
+ */
+function avatarUrl(urls: readonly string[] | undefined): string | undefined {
+  if (urls === undefined) return undefined
+  const http = urls.filter(
+    (url) => url.startsWith("https://") || url.startsWith("http://"),
+  )
+  for (let index = http.length - 1; index >= 0; index -= 1) {
+    const url = http[index]
+    if (url !== undefined && !isHeic(url)) return url
+  }
+  return undefined
+}
+
 /**
  * An earlier url_list entry is often a webp preview. The last entry is the jpeg.
  * download_url_list carries a watermark. Do not read it here.
@@ -131,7 +155,7 @@ function playUrl(urls: readonly string[] | undefined): string | undefined {
 
 function authorFrom(author: typeof AuthorPayload.Type | undefined): Author | undefined {
   if (author === undefined) return undefined
-  const avatar = firstHttpUrl(author.avatar_thumb?.url_list)
+  const avatar = avatarUrl(author.avatar_thumb?.url_list)
   const result: Author = {
     ...(author.uid === undefined ? {} : { id: author.uid }),
     ...(author.nickname === undefined ? {} : { name: author.nickname }),

@@ -276,6 +276,66 @@ describe("douyin extractor", () => {
     expect(failure.code).toBe("SOURCE_UNAVAILABLE")
   })
 
+  test("picks the browser-renderable avatar when HEIC comes first", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_detail: {
+        ...videoFixture.aweme_detail,
+        author: {
+          ...videoFixture.aweme_detail.author,
+          avatar_thumb: {
+            url_list: [
+              "https://p3.douyinpic.com/aweme/100x100/avatar.heic?from=feed",
+              "https://p3.douyinpic.com/aweme/100x100/avatar.jpeg?from=feed",
+            ],
+          },
+        },
+      },
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/video/${videoId}`, videoId),
+        transport,
+      ),
+    )
+    expect(post.author?.avatar).toBe(
+      "https://p3.douyinpic.com/aweme/100x100/avatar.jpeg?from=feed",
+    )
+  })
+
+  test("omits the avatar when every variant is HEIC", async () => {
+    const fixture = {
+      status_code: 0,
+      aweme_detail: {
+        ...videoFixture.aweme_detail,
+        author: {
+          ...videoFixture.aweme_detail.author,
+          avatar_thumb: {
+            url_list: ["https://p3.douyinpic.com/aweme/100x100/avatar.heic"],
+          },
+        },
+      },
+    }
+    const transport: Transport = {
+      request() {
+        return Effect.succeed(Response.json(fixture))
+      },
+    }
+    const post = await Effect.runPromise(
+      douyinExtractor.extract(
+        resource(`https://www.douyin.com/video/${videoId}`, videoId),
+        transport,
+      ),
+    )
+    expect(post.author?.avatar).toBeUndefined()
+    expect(post.author?.name).toBe("fixture-author")
+  })
+
   test("normalizes a video fixture into a MediaPost", async () => {
     const post = await Effect.runPromise(
       douyinExtractor.extract(
