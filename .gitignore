@@ -42,3 +42,6 @@ coverage/
 # Knowledge graphs are generated local indexes. Committing them only creates conflicts.
 .gitnexus/
 graphify-out/
+
+# Lighthouse CI artifacts
+.lighthouseci/

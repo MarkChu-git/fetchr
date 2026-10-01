@@ -44,7 +44,10 @@ jobs:
       - name: Audit dependencies
         # miniflare pins undici 7.29.0, which still has an open moderate advisory.
         # High and critical advisories fail the job.
-        run: bun audit --audit-level=high
+        # extract-zip (via @lhci/cli > lighthouse > puppeteer-core) has no fixed
+        # release yet. It only extracts Chrome archives downloaded from Google's
+        # official hosts inside CI tooling, never user-controlled archives.
+        run: bun audit --audit-level=high --ignore=GHSA-jmr9-qjv8-65gv --ignore=GHSA-7pqw-9j4j-h8q3
       - name: Install scanners
         run: |
           bash scripts/ci/install-pinned-tools.sh "${{ runner.temp }}/ci-tools"

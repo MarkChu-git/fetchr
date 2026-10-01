@@ -23,6 +23,7 @@ export function htmlLang(locale: Locale): "zh-CN" | "en" {
 export interface PageCopy {
   readonly publicLink: string
   readonly intro: string
+  readonly description: string
   readonly pasteLabel: string
   readonly submit: string
   readonly extracting: string
@@ -70,6 +71,7 @@ const copy = {
   zh: {
     publicLink: "公开链接",
     intro: "贴一条公开分享链接，先在这里看，再保存。",
+    description: "粘贴链接，解析并下载社交媒体上的视频、图片和音频。",
     pasteLabel: "粘贴链接",
     submit: "解析",
     extracting: "正在解析",
@@ -91,6 +93,7 @@ const copy = {
   en: {
     publicLink: "Public link",
     intro: "Paste a public share link. Watch it here, then save it.",
+    description: "Paste a link to extract and download videos, images, and audio from social media.",
     pasteLabel: "Paste link",
     submit: "Extract",
     extracting: "Extracting",
