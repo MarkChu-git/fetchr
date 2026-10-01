@@ -27,7 +27,6 @@
     "@fetchr/platform-xiaohongshu": "workspace:*",
     "@fetchr/platform-youtube": "workspace:*",
     "@fontsource/figtree": "^5.3.0",
-    "@fontsource/montserrat": "^5.3.0",
     "@stylexjs/stylex": "0.19.1",
     "@tanstack/react-router": "1.170.39",
     "@tanstack/react-start": "1.168.58",

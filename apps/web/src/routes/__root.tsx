@@ -7,32 +7,34 @@ import "@astryxdesign/theme-stone/theme.css"
 import "@fontsource/figtree/400.css"
 import "@fontsource/figtree/500.css"
 import "@fontsource/figtree/600.css"
-import "@fontsource/montserrat/500.css"
-import "@fontsource/montserrat/600.css"
-import { htmlLang, localeFromSearch } from "../i18n"
+import { htmlLang, localeFromSearch, pageCopy } from "../i18n"
 import "../styles.css"
 
 export const Route = createRootRoute({
-  head: () => ({
-    meta: [
-      { charSet: "utf-8" },
-      {
-        name: "viewport",
-        content: "width=device-width, initial-scale=1",
-      },
-      { title: "Fetchr" },
-      {
-        name: "description",
-        content: "粘贴链接,解析并下载社交媒体上的视频、图片和音频。",
-      },
-    ],
-    links: [
-      // SVG stays sharp in the tab. The PNG covers clients that ignore SVG icons.
-      { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
-      { rel: "icon", href: "/favicon-32.png", sizes: "32x32", type: "image/png" },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-    ],
-  }),
+  head: ({ match }) => {
+    // The root route has no search validator, so search is untyped here.
+    const locale = localeFromSearch((match.search as { lang?: string }).lang)
+    return {
+      meta: [
+        { charSet: "utf-8" },
+        {
+          name: "viewport",
+          content: "width=device-width, initial-scale=1",
+        },
+        { title: "Fetchr" },
+        {
+          name: "description",
+          content: pageCopy(locale).description,
+        },
+      ],
+      links: [
+        // SVG stays sharp in the tab. The PNG covers clients that ignore SVG icons.
+        { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+        { rel: "icon", href: "/favicon-32.png", sizes: "32x32", type: "image/png" },
+        { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
+      ],
+    }
+  },
   shellComponent: RootDocument,
 })
 

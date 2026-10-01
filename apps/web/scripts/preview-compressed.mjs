@@ -7,7 +7,7 @@ const PROXY_PORT = 4174
 
 const COMPRESSIBLE = /^(text\/|application\/(javascript|json|xml|manifest\+json)|image\/svg\+xml)/
 
-const child = spawn("bun", ["run", "preview"], {
+const child = spawn("bun", ["run", "preview", "--", "--port", String(PREVIEW_PORT), "--strictPort"], {
   stdio: ["ignore", "inherit", "inherit"],
 })
 
@@ -17,6 +17,12 @@ function shutdown() {
 }
 process.on("SIGINT", shutdown)
 process.on("SIGTERM", shutdown)
+
+// If vite preview dies, fail fast instead of serving 502s until the timeout.
+child.on("exit", (code) => {
+  console.error(`vite preview exited with code ${code}`)
+  process.exit(code ?? 1)
+})
 
 function waitForPreview(attemptsLeft = 60) {
   return new Promise((resolve, reject) => {
@@ -86,6 +92,6 @@ const server = createServer((clientReq, clientRes) => {
 })
 
 await waitForPreview()
-server.listen(PROXY_PORT, () => {
+server.listen(PROXY_PORT, "127.0.0.1", () => {
   console.log(`Local: http://localhost:${PROXY_PORT}/ (compressed preview proxy)`)
 })
