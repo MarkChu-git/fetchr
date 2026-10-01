@@ -1,6 +1,5 @@
 import type { ExtractFailure, Extractor, Transport } from "@fetchr/core"
 import { Effect } from "effect"
-import { createDetailSource, detailHasImages } from "./detail"
 import { failure } from "./failure"
 import { parseDetail, selectDetail } from "./parser"
 import { match, resolveCanonical } from "./resolver"
@@ -36,9 +35,6 @@ function matchedDetail(
   })
 }
 
-// One signed detail source per module instance: its ttwid cookie is cached for a day.
-const webDetail = createDetailSource()
-
 export const douyinExtractor: Extractor = {
   platform: "douyin",
   match,
@@ -51,21 +47,24 @@ export const douyinExtractor: Extractor = {
           failure("RESOLVE_FAILED", "Douyin video id is missing"),
         )
       }
-      // Image notes are not in the public video feed. A canonical /note/{id} asks the signed web detail directly.
-      if (canonical.url.pathname.startsWith("/note/")) {
-        const detail = yield* webDetail(id, transport)
-        return yield* parseDetail(detail, canonical)
-      }
-      // When the primary host refuses or does not return this work, ask the backup host. The feed misses only after both fail.
+      // Videos and image notes share the feed. When the primary host refuses or
+      // does not return this work, ask the backup host. The feed misses only after both fail.
       const detail = yield* matchedDetail(transport, id, feedRequest)
-      if (detail !== undefined) return yield* parseDetail(detail, canonical)
-      // The feed missed the work. The signed web detail decides whether it is gone or the feed skipped it.
-      // A web share often carries only modal_id, which does not say video or image note; the detail answers that.
-      const fallback = yield* webDetail(id, transport)
-      const fallbackCanonical = detailHasImages(fallback)
-        ? { ...canonical, url: new URL(`https://www.douyin.com/note/${id}`) }
-        : canonical
-      return yield* parseDetail(fallback, fallbackCanonical)
+      if (detail === undefined) {
+        return yield* Effect.fail(
+          failure("SOURCE_UNAVAILABLE", "Douyin feed did not include this work"),
+        )
+      }
+      const post = yield* parseDetail(detail, canonical)
+      // A modal_id link cannot tell video from image note. When the feed answers
+      // with images, the canonical URL is the note form.
+      if (
+        !canonical.url.pathname.startsWith("/note/") &&
+        post.media.some((asset) => asset.type === "image")
+      ) {
+        return { ...post, canonicalUrl: `https://www.douyin.com/note/${post.id}` }
+      }
+      return post
     })
   },
 }

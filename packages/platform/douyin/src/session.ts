@@ -1,7 +1,8 @@
 /**
- * A public video needs no login cookie.
- * The public feed answers without a signature and stays the fast path for videos.
- * The web detail endpoint rejects unsigned requests; signed calls live in detail.ts.
+ * A public work needs no login cookie.
+ * The feed honors aweme_id only when the request carries the full client
+ * parameter set. With aweme_id and aid alone it returns recommendations,
+ * and notes never appear. The parameters below are what the app sends.
  * The app User-Agent stays because that client still receives a list. A browser User-Agent no longer empties it.
  */
 const appUserAgent =
@@ -11,6 +12,24 @@ const feedHosts = [
   "https://api5-normal-c-hl.amemv.com/aweme/v1/feed/",
   "https://aweme.snssdk.com/aweme/v1/feed/",
 ] as const
+
+const clientParams: Record<string, string> = {
+  version_name: "32.9.0",
+  version_code: "320901",
+  device_platform: "android",
+  os_version: "13",
+  device_type: "Pixel 7",
+  channel: "aweGW",
+  os_api: "33",
+  screen_width: "1080",
+  screen_height: "2400",
+  dpi: "420",
+  app_language: "zh",
+  locale: "zh-CN",
+  resolution: "1080*2400",
+  ac: "wifi",
+  update_version_code: "32909900",
+}
 
 const videoIdPattern = /^[A-Za-z0-9]+$/
 
@@ -45,6 +64,9 @@ export function feedRequest(id: string, attempt: 0 | 1): Request {
   const url = new URL(base)
   url.searchParams.set("aweme_id", id)
   url.searchParams.set("aid", "1128")
+  for (const [key, value] of Object.entries(clientParams)) {
+    url.searchParams.set(key, value)
+  }
   return new Request(url, {
     headers: {
       accept: "application/json",
