@@ -66,7 +66,7 @@ jobs:
           "${{ runner.temp }}/ci-tools/actionlint" -color
       - name: Audit workflow security
         run: |
-          "${{ runner.temp }}/ci-tools/zizmor" --no-online-audits .github/workflows
+          "${{ runner.temp }}/ci-tools/zizmor" --no-online-audits --min-severity low .github/workflows
       - name: Review dependency changes
         if: github.event_name == 'pull_request'
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5

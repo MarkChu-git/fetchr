@@ -39,15 +39,26 @@ function toBaselineEntry(value: unknown): BaselineEntry | undefined {
   return { nsPerOp: value.nsPerOp, blocking: value.blocking }
 }
 
+function argAfter(flag: string): string | undefined {
+  const index = process.argv.indexOf(flag)
+  return index < 0 ? undefined : process.argv[index + 1]
+}
+
 async function main() {
+  const writePath = argAfter("--write")
+  const baselinePathArg = argAfter("--baseline")
   const write = process.argv.includes("--write")
+  const readFrom = baselinePathArg ?? baselinePath
+  const writeTo = writePath ?? baselinePath
   let baseline: Baseline = {}
-  if (!write && (await Bun.file(baselinePath).exists())) {
-    const raw: unknown = JSON.parse(await Bun.file(baselinePath).text())
-    if (typeof raw === "object" && raw !== null) {
-      for (const [name, value] of Object.entries(raw)) {
-        const entry = toBaselineEntry(value)
-        if (entry !== undefined) baseline[name] = entry
+  if (baselinePathArg !== undefined || !write) {
+    if (await Bun.file(readFrom).exists()) {
+      const raw: unknown = JSON.parse(await Bun.file(readFrom).text())
+      if (typeof raw === "object" && raw !== null) {
+        for (const [name, value] of Object.entries(raw)) {
+          const entry = toBaselineEntry(value)
+          if (entry !== undefined) baseline[name] = entry
+        }
       }
     }
   }
@@ -92,7 +103,7 @@ async function main() {
   console.log("Benchmarks\n")
   for (const row of rows) console.log(row)
   if (write) {
-    await Bun.write(baselinePath, `${JSON.stringify(results, null, 2)}\n`)
+    await Bun.write(writeTo, `${JSON.stringify(results, null, 2)}\n`)
     console.log("\nBaseline updated.")
   }
   if (failed) {
