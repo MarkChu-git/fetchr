@@ -53,7 +53,8 @@ jobs:
         run: |
           pipx install semgrep==1.136.0
           # semgrep's wrapper still imports pkg_resources; setuptools >= 82 dropped it.
-          pipx inject semgrep "setuptools<82"
+          # The venv ships a new setuptools, so inject needs --force to downgrade it.
+          pipx inject --force semgrep "setuptools<82"
           semgrep --config .verifier/semgrep --error .
       - name: Lint shell scripts
         run: shellcheck scripts/ci/install-pinned-tools.sh
