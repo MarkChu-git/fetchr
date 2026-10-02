@@ -2,6 +2,7 @@ import { Avatar } from "@astryxdesign/core/Avatar"
 import { Badge } from "@astryxdesign/core/Badge"
 import { Button } from "@astryxdesign/core/Button"
 import { Card } from "@astryxdesign/core/Card"
+import { DropdownMenu } from "@astryxdesign/core/DropdownMenu"
 import { Grid } from "@astryxdesign/core/Grid"
 import { Heading, Text } from "@astryxdesign/core/Text"
 import { HStack } from "@astryxdesign/core/HStack"
@@ -201,6 +202,58 @@ function savedName(href: string, type: string): string {
   return "fetchr.bin"
 }
 
+/** Save a URL to disk. Same-origin URLs carry Content-Disposition; cross-origin bytes are read first. */
+async function saveHref(href: string): Promise<boolean> {
+  let target: URL
+  try {
+    target = new URL(href, window.location.href)
+  } catch {
+    return false
+  }
+  if (target.origin === window.location.origin) {
+    const anchor = document.createElement("a")
+    anchor.href = href
+    anchor.download = ""
+    anchor.click()
+    return true
+  }
+  try {
+    const response = await fetch(href)
+    if (!response.ok) return false
+    const blob = await response.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement("a")
+    anchor.href = objectUrl
+    anchor.download = savedName(href, blob.type)
+    anchor.click()
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** The original's size is not in the feed. One range request reads it exactly. */
+function useRemoteBytes(href: string | undefined): number | undefined {
+  const [bytes, setBytes] = useState<number | undefined>()
+  useEffect(() => {
+    let cancelled = false
+    if (href !== undefined) {
+      fetch(href, { headers: { range: "bytes=0-0" } })
+        .then((response) => {
+          const range = response.headers.get("content-range")
+          const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
+          if (!cancelled && Number.isFinite(total) && total > 0) setBytes(total)
+        })
+        .catch(() => undefined)
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [href])
+  return bytes
+}
+
 function DownloadLink({
   href,
   text,
@@ -215,38 +268,8 @@ function DownloadLink({
   const [message, setMessage] = useState<string | undefined>()
 
   async function onClick() {
-    let target: URL
-    try {
-      target = new URL(href, window.location.href)
-    } catch {
-      return
-    }
-    // A same-origin URL already carries Content-Disposition, so let the browser save it.
-    // Across origins the download attribute is ignored and the click only opens the file, so read the bytes first and then save them.
-    if (target.origin === window.location.origin) {
-      const anchor = document.createElement("a")
-      anchor.href = href
-      anchor.download = ""
-      anchor.click()
-      return
-    }
-    setMessage(undefined)
-    try {
-      const response = await fetch(href)
-      if (!response.ok) {
-        setMessage(text.fileUnreadable)
-        return
-      }
-      const blob = await response.blob()
-      const objectUrl = URL.createObjectURL(blob)
-      const anchor = document.createElement("a")
-      anchor.href = objectUrl
-      anchor.download = savedName(href, blob.type)
-      anchor.click()
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 60_000)
-    } catch {
-      setMessage(text.fileUnreadable)
-    }
+    const ok = await saveHref(href)
+    setMessage(ok ? undefined : text.fileUnreadable)
   }
 
   const wide = fill ? { width: "100%" as const } : {}
@@ -344,6 +367,16 @@ export function PostView({
       : primaryAsset.delivery.type === "direct"
         ? primaryAsset.delivery.url
         : proxyHref(primaryAsset.delivery)
+  const originalBytes = useRemoteBytes(primaryHref)
+  const originalDetail =
+    primaryAsset === undefined
+      ? undefined
+      : [
+          dimsOf(primaryAsset),
+          originalBytes === undefined ? undefined : formatSize(originalBytes),
+        ]
+          .filter((part) => part !== undefined)
+          .join(" · ") || undefined
   const showCover =
     thumbnail !== undefined &&
     heroVideo === undefined &&
@@ -493,41 +526,48 @@ export function PostView({
               </VStack>
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
-            {primaryAsset !== undefined ? (
-              <PrimaryAction
-                asset={primaryAsset}
-                text={text}
-                label={text.downloadOriginal(
-                  dimsOf(primaryAsset),
-                  primaryAsset.type === "image" ? "image" : "video",
-                )}
-              />
-            ) : null}
-            {qualityVariants.map((item) => (
-              <DownloadLink
-                key={item.cls}
-                href={item.href}
-                text={text}
-                label={text.downloadTier(
-                  item.cls,
-                  item.bytes === undefined ? undefined : formatSize(item.bytes),
-                )}
-                fill
-              />
-            ))}
-            {primaryHref !== undefined && primaryAsset !== undefined ? (
-              <ShareRow
+            {primaryAsset !== undefined && primaryHref !== undefined ? (
+              <DownloadMenu
                 targets={[
                   {
                     href: primaryHref,
                     name: primaryAsset.id,
                     label: text.qualityOriginal,
+                    ...(originalDetail === undefined ? {} : { detail: originalDetail }),
                   },
-                  ...qualityVariants.map((item) => ({
-                    href: item.href,
-                    name: `${primaryAsset.id}-${item.cls}`,
-                    label: item.cls,
-                  })),
+                  ...qualityVariants.map((item) => {
+                    const target: DownloadTarget = {
+                      href: item.href,
+                      name: `${primaryAsset.id}-${item.cls}`,
+                      label: item.cls,
+                    }
+                    if (item.bytes === undefined) return target
+                    return Object.assign(target, { detail: `~${formatSize(item.bytes)}` })
+                  }),
+                ]}
+                text={text}
+              />
+            ) : primaryAsset !== undefined ? (
+              <PrimaryAction asset={primaryAsset} text={text} />
+            ) : null}
+            {primaryHref !== undefined && primaryAsset !== undefined ? (
+              <ShareMenu
+                targets={[
+                  {
+                    href: primaryHref,
+                    name: primaryAsset.id,
+                    label: text.qualityOriginal,
+                    ...(originalBytes === undefined ? {} : { bytes: originalBytes }),
+                  },
+                  ...qualityVariants.map((item) => {
+                    const target: ShareTarget = {
+                      href: item.href,
+                      name: `${primaryAsset.id}-${item.cls}`,
+                      label: item.cls,
+                    }
+                    if (item.bytes === undefined) return target
+                    return Object.assign(target, { bytes: item.bytes })
+                  }),
                 ]}
                 text={text}
               />
@@ -733,6 +773,16 @@ function ShareToAlbum({
   )
 }
 
+/** Share bytes through the OS sheet. Throws on failure; AbortError means the user cancelled. */
+async function shareHref(href: string, name: string): Promise<void> {
+  const response = await fetch(href)
+  if (!response.ok) throw new Error("fetch failed")
+  const blob = await response.blob()
+  const file = new File([blob], `${name}${batchExtension(blob.type)}`, { type: blob.type })
+  if (!navigator.canShare({ files: [file] })) throw new Error("cannot share")
+  await navigator.share({ files: [file] })
+}
+
 /** One sync check gates the whole share section; each target still probes its size. */
 function canShareFiles(): boolean {
   if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") {
@@ -744,11 +794,22 @@ function canShareFiles(): boolean {
   return navigator.canShare({ files: [probeFile] })
 }
 
-function ShareRow({
+interface ShareTarget {
+  readonly href: string
+  readonly name: string
+  readonly label: string
+  readonly bytes?: number
+}
+
+/**
+ * The quality menu for the OS share sheet. Desktop never sees it; items over the
+ * share size limit are disabled once their probe returns.
+ */
+function ShareMenu({
   targets,
   text,
 }: {
-  readonly targets: readonly { readonly href: string; readonly name: string; readonly label: string }[]
+  readonly targets: readonly ShareTarget[]
   readonly text: PageCopy
 }) {
   // SSR must not see the capability; subscribe never fires because it cannot change mid-session.
@@ -757,23 +818,94 @@ function ShareRow({
     () => canShareFiles(),
     () => false,
   )
+  const [probed, setProbed] = useState<Readonly<Record<string, number>>>({})
+  const [failed, setFailed] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    if (shareable) {
+      for (const target of targets) {
+        if (target.bytes !== undefined) continue
+        const probe = target
+        void fetch(probe.href, { headers: { range: "bytes=0-0" } })
+          .then((response) => {
+            const range = response.headers.get("content-range")
+            const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
+            if (!cancelled && Number.isFinite(total) && total > 0) {
+              setProbed((current) => ({ ...current, [probe.href]: total }))
+            }
+          })
+          .catch(() => undefined)
+      }
+    }
+    return () => {
+      cancelled = true
+    }
+  }, [shareable, targets])
+
   if (!shareable) return null
   return (
     <VStack gap={2} width="100%">
-      <Text type="supporting" color="secondary">
-        {text.saveToAlbum}
-      </Text>
-      <HStack gap={2} wrap="wrap">
-        {targets.map((target) => (
-          <ShareToAlbum
-            key={target.href}
-            href={target.href}
-            name={target.name}
-            label={target.label}
-            text={text}
-          />
-        ))}
-      </HStack>
+      <DropdownMenu
+        button={{ label: text.saveToAlbum, variant: "secondary" }}
+        items={targets.map((target) => {
+          const size = target.bytes ?? probed[target.href]
+          return {
+            id: target.href,
+            label: target.label,
+            isDisabled: size !== undefined && size > shareSizeLimit,
+            onClick: () => {
+              shareHref(target.href, target.name).catch((error: unknown) => {
+                if (error instanceof Error && error.name === "AbortError") return
+                setFailed(true)
+              })
+            },
+          }
+        })}
+      />
+      {failed ? (
+        <Text type="supporting" color="secondary">
+          {text.fileUnreadable}
+        </Text>
+      ) : null}
+    </VStack>
+  )
+}
+
+interface DownloadTarget {
+  readonly href: string
+  readonly name: string
+  readonly label: string
+  readonly detail?: string
+}
+
+/** The quality menu for downloads: original plus the platform's own renditions. */
+function DownloadMenu({
+  targets,
+  text,
+}: {
+  readonly targets: readonly DownloadTarget[]
+  readonly text: PageCopy
+}) {
+  const [failed, setFailed] = useState(false)
+  return (
+    <VStack gap={2} width="100%">
+      <DropdownMenu
+        button={{ label: text.download }}
+        items={targets.map((target) => ({
+          id: target.href,
+          label: target.label,
+          ...(target.detail === undefined ? {} : { description: target.detail }),
+          onClick: () => {
+            void saveHref(target.href).then((ok) => setFailed(!ok))
+          },
+        }))}
+      />
+      {failed ? (
+        <Text type="supporting" color="secondary">
+          {text.fileUnreadable}
+        </Text>
+      ) : null}
     </VStack>
   )
 }
@@ -781,21 +913,17 @@ function ShareRow({
 function PrimaryAction({
   asset,
   text,
-  label,
 }: {
   readonly asset: MediaAsset
   readonly text: PageCopy
-  readonly label?: string
 }) {
   const delivery = asset.delivery
   if (delivery.type === "direct") {
-    return <DownloadLink href={delivery.url} text={text} {...(label === undefined ? {} : { label })} fill />
+    return <DownloadLink href={delivery.url} text={text} fill />
   }
   if (delivery.type === "proxy") {
     const href = proxyHref(delivery)
-    return href === undefined ? null : (
-      <DownloadLink href={href} text={text} {...(label === undefined ? {} : { label })} fill />
-    )
+    return href === undefined ? null : <DownloadLink href={href} text={text} fill />
   }
   if (delivery.type === "playlist") {
     return (

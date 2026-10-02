@@ -8,8 +8,7 @@ Paste the share text on the page. Fetchr takes the URL out of that text and load
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/MarkChu-git/fetchr)
 
-> [!WARNING]
-> Version 0.0.0. The workspace packages are private. `extract()` lives in this repository, uses Effect 4.0.0-rc.117, and can change.
+Releases follow semver. A `vX.Y.Z` tag builds, tests, and publishes a GitHub release. See [Releases](https://github.com/MarkChu-git/fetchr/releases).
 
 ## Quick Start
 
@@ -30,7 +29,12 @@ The page opens in Chinese. **中文** and **EN** in the top bar switch the langu
 
 Use the field labeled **Paste link**. Paste a URL, or the whole share sentence. Fetchr keeps the `http` or `https` URL, strips zero-width characters, and drops trailing punctuation.
 
-Press **Extract**. The post replaces the empty state. Press **Download** to save the file. When picture and audio arrive as two files, press **Combine and download**. The browser combines them and saves `fetchr.mp4`. A DASH playlist shows "This is a DASH manifest", and **Download** saves the manifest.
+Press **Extract**. The post replaces the empty state. Saving works like this:
+
+- **下载 / Download** opens the quality menu. The first item is the original file with its dimensions and exact size. Douyin videos also list the platform's own renditions (720p, 540p) with an estimated size. The original of a short clip can be thirty times larger than a rendition.
+- **保存到相册 / Save to Photos** appears on phones that can share files. It sends the file to the OS share sheet, in the quality you pick.
+- **全部下载 / Download all** appears when a post has more than one file. It packs every original into one zip in the browser.
+- When picture and audio arrive as two files, press **Combine and download**. The browser combines them and saves an mp4. A DASH playlist shows a manifest note, and **Download** saves the manifest.
 
 Leave the address bar on this page.
 
@@ -59,14 +63,14 @@ A failure replaces the empty state with one of these messages:
 
 Fetchr does the following:
 
-- Douyin image notes load without a saved login. A link that points at one video returns "The upstream sent no usable page": the public feed lists other works, and the detail endpoint refuses the Worker. Short links on `v.douyin.com` still resolve. A page URL whose id is only `modal_id` resolves when that work is an image note.
-- When a Douyin video payload is present, the saved file is the original (`ratio=default`). If that play id is missing, Fetchr prefers a play URL without `playwm`, and rewrites a `playwm` URL to `play` when no other URL is present. An image note is saved from the last non-webp URL in `url_list`. `download_url_list` stays unread because those URLs carry a watermark.
+- Douyin videos and image notes both load without a saved login. The public feed answers only when the request carries the full client parameter set; with it, the feed returns the target work, videos and image notes alike. Short links on `v.douyin.com` resolve, including codes with `-` and `_`. A page URL whose id is only `modal_id` resolves, and the canonical URL becomes a `/note/` link when the work is an image note.
+- A Douyin video saves the original (`ratio=default`) by default, with the platform's own 720p and 540p renditions as smaller choices. An image note is saved from the last browser-safe URL in `url_list`, skipping webp previews and HEIC live-photo stills. `download_url_list` stays unread because those URLs carry a watermark.
 - Bilibili public videos on `www.bilibili.com` and `m.bilibili.com`, and short links on `b23.tv`. The browser combines separate picture and audio.
 - YouTube `/watch` URLs on `www.youtube.com`, `m.youtube.com`, `music.youtube.com`, and `youtube-nocookie.com`, plus `youtu.be` links.
 - X and Twitter status URLs on `x.com`, `www.x.com`, `twitter.com`, and `www.twitter.com`, when the post is visible without a login.
 - 小红书 `/explore/` and `xhslink.com` links, Instagram `/p/` and `/reel/` posts, TikTok links on `tiktok.com` (`www`, `m`, `vm`, `vt`), including `/t/` short links and `@user/video` or `@user/photo` paths, and 快手 URLs on `v.kuaishou.com` and `www.kuaishou.com/short-video/`.
 - One Worker, named `fetchr-web`. It keeps no media file and runs no transcoder.
-- An HMAC-SHA256 download token when the browser cannot attach the headers the file host requires. The token expires after 5 minutes. A token that fails verification returns "This download link is not valid" on the English page and 「下载链接无效」 on the Chinese page.
+- An HMAC-SHA256 download token when the browser cannot attach the headers the file host requires. The token expires after 30 minutes. A token that fails verification returns "This download link is not valid" on the English page and 「下载链接无效」 on the Chinese page.
 
 ## How It Works
 
@@ -109,6 +113,8 @@ Each media file carries one delivery:
 | `packages/media-browser` | Browser mux of separate picture and audio |
 | `packages/platform/*` | One package per platform. `fixture` is a test extractor |
 | `scripts/ci` | The Worker publish script and pinned scanner installers |
+| `tests/e2e` | Playwright end-to-end tests over the preview server |
+| `.verifier/semgrep` | Policy rules: no `any`, no `@ts-ignore`, no Node/Bun imports in shipped source |
 | `docs/adr` | Design notes, written in Chinese |
 
 ## Documentation
@@ -126,14 +132,14 @@ The design notes are in Chinese:
 From the repository root:
 
 ```sh
-bun run lint
-bun run check
-bun run typecheck
-bun test
-bun run build
+bun run verify:fast   # typecheck (TypeScript 7, native) + type-aware oxlint + bun test
+bun run verify        # verify:fast + knip + boundary scan + astryx doctor
+bun run policy        # Semgrep rules in .verifier/semgrep (pipx install semgrep)
+bun run test:e2e      # Playwright over the built preview, offline fixtures
+bun run build         # build the Worker
 ```
 
-`bun run lint` runs oxlint and denies warnings. `bun run check` checks that shipped source stays on Web APIs and that packages keep their dependency boundaries. `bun run typecheck` checks every workspace package and `scripts/ci`. `bun test` runs the tests. `bun run build` builds the Worker.
+Run `verify:fast` after every meaningful change. Run `verify` and `policy` before calling a task done. `arch` is the module boundary scan; dependency-cruiser joins once it supports the TypeScript 7 API.
 
 ## Configuration
 
@@ -162,6 +168,8 @@ https://deploy.workers.cloudflare.com/?url=https://github.com/MarkChu-git/fetchr
 ```
 
 `apps/web` depends on the workspace packages beside it. A URL that points at `apps/web` clones that directory alone, so those packages are absent. Cloudflare asks for `FETCHR_PROXY_SECRET` and `TURNSTILE_SECRET` before the deploy.
+
+Deploys use the `cf` CLI with `apps/web/cloudflare.config.ts`. `apps/web/wrangler.jsonc` stays because the Cloudflare Vite plugin still reads it at build time.
 
 A push to `main` builds `apps/web` and publishes `fetchr-web`. The first publish, when the Worker does not exist yet, runs `cf deploy` and then checks the live Worker. Later pushes upload a version, check that version, shift traffic to it, and check the live Worker again. A failed live check rolls that publish back.
 

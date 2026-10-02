@@ -184,9 +184,6 @@ export function HomePage() {
       <div {...stylex.props(styles.column)}>
         <Card padding={5}>
           <VStack gap={4}>
-            <Text type="supporting" color="secondary">
-              {text.intro}
-            </Text>
             <form {...stylex.props(styles.form)} data-fetchr-paste="" onSubmit={onSubmit}>
               <div {...stylex.props(styles.field)}>
                 <TextInput
