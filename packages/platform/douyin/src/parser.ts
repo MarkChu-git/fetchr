@@ -54,6 +54,8 @@ const ImagePayload = Schema.Struct({
 const AwemeDetail = Schema.Struct({
   aweme_id: Schema.String,
   desc: Schema.optionalKey(Schema.String),
+  // Milliseconds. With a tier's bit_rate it estimates the tier's file size.
+  duration: Schema.optionalKey(Schema.Number),
   author: Schema.optionalKey(AuthorPayload),
   // A public note often omits this field, or sets it to null. Treat only 1 as private. null must not fail the whole parse.
   private_status: Schema.optionalKey(Schema.NullOr(Schema.Literals([0, 1]))),
@@ -225,7 +227,17 @@ function qualityTiers(detail: Aweme): readonly VideoAsset[] {
   for (const cls of ["720p", "540p"] as const) {
     const tier = best.get(cls)
     // Ids end in :720p / :540p; the page lists them as labeled quality downloads, not as separate videos.
-    if (tier !== undefined) assets.push(videoAsset(detail, tier.url, `${detail.aweme_id}:${cls}`))
+    if (tier === undefined) continue
+    const asset = videoAsset(detail, tier.url, `${detail.aweme_id}:${cls}`)
+    const seconds = (detail.duration ?? 0) / 1000
+    const bytes = seconds > 0 && tier.rate > 0
+      ? Math.round((tier.rate * seconds) / 8)
+      : undefined
+    assets.push({
+      ...asset,
+      bitrate: tier.rate,
+      ...(bytes === undefined ? {} : { bytes }),
+    })
   }
   return assets
 }

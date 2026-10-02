@@ -3,6 +3,7 @@ export const videoFixture = {
   aweme_detail: {
     aweme_id: "7000000000000000001",
     desc: "public fixture clip",
+    duration: 13000,
     author: {
       uid: "fixture-author-1",
       nickname: "fixture-author",

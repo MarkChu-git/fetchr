@@ -31,10 +31,11 @@ export interface PageCopy {
   readonly emptyDescription: string
   readonly download: string
   readonly downloadAll: string
-  readonly downloadHd: string
-  readonly downloadSd: string
   readonly saveToAlbum: string
+  readonly qualityOriginal: string
   readonly packaging: string
+  downloadOriginal(dims: string | undefined, kind: "video" | "image"): string
+  downloadTier(tier: string, size: string | undefined): string
   readonly combine: string
   readonly fileUnreadable: string
   readonly combineUnreadable: string
@@ -83,11 +84,14 @@ const copy = {
     emptyTitle: "还没有内容",
     emptyDescription: "解析之后，视频会出现在这里。",
     download: "下载",
-    downloadAll: "全部下载",
-    downloadHd: "高清 720p",
-    downloadSd: "省流 540p",
+    downloadAll: "全部下载(原画 zip)",
     saveToAlbum: "保存到相册",
+    qualityOriginal: "原画",
     packaging: "正在打包",
+    downloadOriginal: (dims, kind) =>
+      `下载${kind === "video" ? "原画" : "原图"}${dims === undefined ? "" : ` · ${dims}`}`,
+    downloadTier: (tier, size) =>
+      `下载 ${tier}${size === undefined ? "" : ` · 约 ${size}`}`,
     combine: "合成并下载",
     fileUnreadable: "浏览器读不到这个文件",
     combineUnreadable: "浏览器读不到这两路字节，无法合成",
@@ -110,12 +114,14 @@ const copy = {
     emptyTitle: "Nothing here yet",
     emptyDescription: "After you extract a link, the video shows up here.",
     download: "Download",
-    downloadAll: "Download all",
-    downloadHd: "HD 720p",
-    downloadSd: "SD 540p",
+    downloadAll: "Download all (original, zip)",
     saveToAlbum: "Save to Photos",
+    qualityOriginal: "Original",
     packaging: "Preparing the zip",
-    combine: "Combine and download",
+    downloadOriginal: (dims, kind) =>
+      `Download original ${kind}${dims === undefined ? "" : ` · ${dims}`}`,
+    downloadTier: (tier, size) =>
+      `Download ${tier}${size === undefined ? "" : ` · ~${size}`}`,    combine: "Combine and download",
     fileUnreadable: "The browser could not read this file",
     combineUnreadable: "The browser could not read the picture and audio, so they cannot be combined",
     combineFailed: "Combining failed",

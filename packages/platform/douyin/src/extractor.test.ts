@@ -42,6 +42,8 @@ const videoPost = {
       width: 720,
       height: 1280,
       thumbnail: "https://cdn.example/covers/clip.jpg",
+      bitrate: 1155701,
+      bytes: 1878014,
       delivery: {
         type: "proxy",
         token: "pending",
@@ -55,6 +57,8 @@ const videoPost = {
       width: 720,
       height: 1280,
       thumbnail: "https://cdn.example/covers/clip.jpg",
+      bitrate: 794713,
+      bytes: 1291409,
       delivery: {
         type: "proxy",
         token: "pending",

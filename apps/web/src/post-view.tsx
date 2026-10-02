@@ -12,7 +12,7 @@ import type { PageCopy } from "./i18n"
 import type { Locale } from "./i18n"
 import { htmlLang, pageCopy } from "./i18n"
 import type { MuxWorkerResult } from "./mux-worker"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useSyncExternalStore } from "react"
 import { zipStore, type ZipEntry } from "./zip"
 
 const styles = stylex.create({
@@ -310,7 +310,9 @@ export function PostView({
     const cls = qualityClass(asset)
     if (cls === undefined || asset.delivery.type !== "proxy") return []
     const href = proxyHref(asset.delivery)
-    return href === undefined ? [] : [{ cls, href }]
+    if (href === undefined) return []
+    const bytes = asset.type === "video" ? asset.bytes : undefined
+    return [{ cls, href, ...(bytes === undefined ? {} : { bytes }) }]
   })
   const images = post.media.flatMap((asset) => {
     const view = imageView(asset)
@@ -402,7 +404,13 @@ export function PostView({
                     />
                   </div>
                   <DownloadLink href={item.download} text={text} fill />
-                  <ShareToAlbum href={item.download} name={item.asset.id} text={text} />
+                  <ShareToAlbum
+                    href={item.download}
+                    name={item.asset.id}
+                    label={text.saveToAlbum}
+                    text={text}
+                    fill
+                  />
                 </VStack>
               ))}
             </Grid>
@@ -485,19 +493,45 @@ export function PostView({
               </VStack>
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
-            {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} text={text} /> : null}
-            {primaryHref !== undefined && primaryAsset !== undefined ? (
-              <ShareToAlbum href={primaryHref} name={primaryAsset.id} text={text} />
+            {primaryAsset !== undefined ? (
+              <PrimaryAction
+                asset={primaryAsset}
+                text={text}
+                label={text.downloadOriginal(
+                  dimsOf(primaryAsset),
+                  primaryAsset.type === "image" ? "image" : "video",
+                )}
+              />
             ) : null}
             {qualityVariants.map((item) => (
               <DownloadLink
                 key={item.cls}
                 href={item.href}
                 text={text}
-                label={item.cls === "720p" ? text.downloadHd : text.downloadSd}
+                label={text.downloadTier(
+                  item.cls,
+                  item.bytes === undefined ? undefined : formatSize(item.bytes),
+                )}
                 fill
               />
             ))}
+            {primaryHref !== undefined && primaryAsset !== undefined ? (
+              <ShareRow
+                targets={[
+                  {
+                    href: primaryHref,
+                    name: primaryAsset.id,
+                    label: text.qualityOriginal,
+                  },
+                  ...qualityVariants.map((item) => ({
+                    href: item.href,
+                    name: `${primaryAsset.id}-${item.cls}`,
+                    label: item.cls,
+                  })),
+                ]}
+                text={text}
+              />
+            ) : null}
             {batchItems.length > 1 ? (
               <BatchDownload items={batchItems} post={post} text={text} />
             ) : null}
@@ -606,6 +640,17 @@ function BatchDownload({
 
 const shareSizeLimit = 100 * 1024 * 1024
 
+function formatSize(bytes: number): string {
+  const mb = bytes / 1048576
+  return `${mb < 10 ? mb.toFixed(1) : Math.round(mb)}MB`
+}
+
+function dimsOf(asset: MediaAsset): string | undefined {
+  if (asset.type === "audio") return undefined
+  if (asset.width === undefined || asset.height === undefined) return undefined
+  return `${asset.width}×${asset.height}`
+}
+
 /**
  * "Save to Photos" via the Web Share API. Only meaningful on iOS/Android, so the
  * button renders only when canShare accepts files. Cross-origin direct URLs stay
@@ -614,11 +659,15 @@ const shareSizeLimit = 100 * 1024 * 1024
 function ShareToAlbum({
   href,
   name,
+  label,
   text,
+  fill = false,
 }: {
   readonly href: string
   readonly name: string
+  readonly label: string
   readonly text: PageCopy
+  readonly fill?: boolean
 }) {
   const [ready, setReady] = useState(false)
   const [message, setMessage] = useState<string | undefined>()
@@ -666,11 +715,11 @@ function ShareToAlbum({
 
   if (!ready) return null
   return (
-    <VStack gap={2} width="100%">
+    <VStack gap={2} {...(fill ? { width: "100%" as const } : {})}>
       <Button
-        label={text.saveToAlbum}
+        label={label}
         variant="secondary"
-        width="100%"
+        {...(fill ? { width: "100%" as const } : {})}
         onClick={() => {
           void onShare()
         }}
@@ -684,20 +733,69 @@ function ShareToAlbum({
   )
 }
 
+/** One sync check gates the whole share section; each target still probes its size. */
+function canShareFiles(): boolean {
+  if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") {
+    return false
+  }
+  const probeFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "probe.png", {
+    type: "image/png",
+  })
+  return navigator.canShare({ files: [probeFile] })
+}
+
+function ShareRow({
+  targets,
+  text,
+}: {
+  readonly targets: readonly { readonly href: string; readonly name: string; readonly label: string }[]
+  readonly text: PageCopy
+}) {
+  // SSR must not see the capability; subscribe never fires because it cannot change mid-session.
+  const shareable = useSyncExternalStore(
+    () => () => {},
+    () => canShareFiles(),
+    () => false,
+  )
+  if (!shareable) return null
+  return (
+    <VStack gap={2} width="100%">
+      <Text type="supporting" color="secondary">
+        {text.saveToAlbum}
+      </Text>
+      <HStack gap={2} wrap="wrap">
+        {targets.map((target) => (
+          <ShareToAlbum
+            key={target.href}
+            href={target.href}
+            name={target.name}
+            label={target.label}
+            text={text}
+          />
+        ))}
+      </HStack>
+    </VStack>
+  )
+}
+
 function PrimaryAction({
   asset,
   text,
+  label,
 }: {
   readonly asset: MediaAsset
   readonly text: PageCopy
+  readonly label?: string
 }) {
   const delivery = asset.delivery
   if (delivery.type === "direct") {
-    return <DownloadLink href={delivery.url} text={text} fill />
+    return <DownloadLink href={delivery.url} text={text} {...(label === undefined ? {} : { label })} fill />
   }
   if (delivery.type === "proxy") {
     const href = proxyHref(delivery)
-    return href === undefined ? null : <DownloadLink href={href} text={text} fill />
+    return href === undefined ? null : (
+      <DownloadLink href={href} text={text} {...(label === undefined ? {} : { label })} fill />
+    )
   }
   if (delivery.type === "playlist") {
     return (
