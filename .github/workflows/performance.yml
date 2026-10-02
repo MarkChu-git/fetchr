@@ -32,7 +32,7 @@ jobs:
       # bench harness (before this workflow existed) skips the compare.
       - name: Benchmark the PR against its base
         run: |
-          git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}"
+          git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}" "${{ github.event.pull_request.head.sha }}"
           git checkout --detach "${{ github.event.pull_request.base.sha }}"
           if [ -f bench/index.ts ]; then
             bun install --frozen-lockfile
