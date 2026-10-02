@@ -1,0 +1,20 @@
+rules:
+  # Shipped source runs on the Worker. Node and Bun APIs do not exist there.
+  - id: no-node-or-bun-imports-in-shipped-source
+    languages: [typescript]
+    severity: ERROR
+    message: Shipped source cannot import Node or Bun modules.
+    patterns:
+      - pattern-either:
+          - pattern: import $X from "node:$MOD"
+          - pattern: import $X from "bun"
+          - pattern: import $X from "bun:$MOD"
+          - pattern: import "node:$MOD"
+          - pattern: import "bun:$MOD"
+    paths:
+      include:
+        - "**/packages/**/src/**"
+        - "**/apps/web/src/**"
+      exclude:
+        - "**/*.test.ts"
+        - "**/*.property.test.ts"

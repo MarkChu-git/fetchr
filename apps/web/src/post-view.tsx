@@ -140,7 +140,7 @@ function imageView(asset: MediaAsset):
   return { asset, preview: `${href}?inline=1`, download: href }
 }
 
-function quietMedia<T extends HTMLElement>(element: T | null) {
+function quietMedia(element: HTMLElement | null) {
   element?.setAttribute("referrerpolicy", "no-referrer")
 }
 

@@ -25,9 +25,38 @@ Rules:
 - Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
 - After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
 
+## Verification
+
+After every meaningful code change, run:
+
+`bun run verify:fast` (typecheck + type-aware lint + tests; seconds)
+
+Before declaring a task complete, run:
+
+`bun run verify` (verify:fast + knip + boundary scan) and `bun run policy` (Semgrep rules in `.verifier/semgrep/`; install once with `pipx install semgrep`).
+
+If the change affects browser-visible behavior, additionally run:
+
+`bun run test:e2e` (Playwright; fixture URLs keep it offline).
+
+Never:
+
+- disable a verifier to make a change pass
+- weaken a rule without explanation
+- add `@ts-ignore` to silence an error
+- use `any` merely to bypass type checking
+- remove tests to make CI pass
+- add Semgrep/Knip/zizmor ignores without justification in the ignore comment
+
+When a verifier fails:
+
+1. Assume the code is wrong first.
+2. Investigate the failure.
+3. Fix the implementation.
+4. Only modify verifier configuration when the verifier is demonstrably incorrect — with the reason recorded next to the change.
+
 <!-- gitnexus:start -->
 # GitNexus — Code Intelligence
-
 This project is indexed by GitNexus as **fetchr** (252 symbols, 261 relationships, 0 execution flows).
 
 > Index stale? Run `node .gitnexus/run.cjs analyze --index-only` from the project root — it auto-selects an available runner. No `.gitnexus/run.cjs` yet? Bootstrap with `npx`, `bunx`, or `pnpm dlx` — e.g. `bunx gitnexus@latest analyze` (npm 11 npx crash; #1939).

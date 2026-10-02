@@ -7,7 +7,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-export const workerName = "fetchr-web"
+const workerName = "fetchr-web"
 const liveDomain = "https://fetchr.hanyang.app"
 
 export function requireSecret(secret: string | undefined): string {
@@ -60,7 +60,7 @@ export function workersDevUrlFrom(output: string): string {
   return preferred.replace(/\/$/, "")
 }
 
-export async function smokeWorker(url: string): Promise<void> {
+async function smokeWorker(url: string): Promise<void> {
   const base = url.replace(/\/$/, "")
   await waitForHomepage(base)
   await waitForRejectedExtract(base)

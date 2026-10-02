@@ -2,9 +2,9 @@ export interface XiaohongshuSession {
   readonly cookies: Readonly<Record<string, string>>
 }
 
-export const anonymousSession: XiaohongshuSession = { cookies: {} }
+const anonymousSession: XiaohongshuSession = { cookies: {} }
 
-export const cookieHeader = (session: XiaohongshuSession): string | undefined => {
+const cookieHeader = (session: XiaohongshuSession): string | undefined => {
   const parts: Array<string> = []
   for (const [name, value] of Object.entries(session.cookies)) {
     if (name.length === 0) continue

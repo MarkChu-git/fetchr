@@ -1,0 +1,19 @@
+rules:
+  - id: no-math-random-in-packages
+    languages: [typescript]
+    severity: ERROR
+    message: Tokens and ids use crypto.getRandomValues. Math.random is not a secret source.
+    pattern: Math.random(...)
+    paths:
+      include:
+        - "**/packages/**/src/**"
+
+  - id: no-hardcoded-bearer
+    languages: [typescript]
+    severity: ERROR
+    message: Hardcoded credentials are forbidden. Secrets come from env bindings.
+    pattern-regex: "(?i)(bearer|api[_-]?key|token|secret)\\s*[:=]\\s*[\"'][A-Za-z0-9_\\-]{24,}[\"']"
+    paths:
+      exclude:
+        - "**/*.test.ts"
+        - "**/fixtures/**"

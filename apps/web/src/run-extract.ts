@@ -11,6 +11,10 @@ interface ExtractBody {
   readonly challenge?: boolean
 }
 
+function isExtractBody(value: unknown): value is ExtractBody {
+  return typeof value === "object" && value !== null
+}
+
 /** Extraction runs on the Worker. Platform requests, signing, and rate limits do not belong in the browser. */
 export async function runExtract(
   url: string,
@@ -31,7 +35,9 @@ export async function runExtract(
   }
   let body: ExtractBody
   try {
-    body = (await response.json()) as ExtractBody
+    const raw: unknown = await response.json()
+    if (!isExtractBody(raw)) throw new Error("not an extract body")
+    body = raw
   } catch {
     return { ok: false, code: "EXTRACTOR_BROKEN", challenge: false }
   }

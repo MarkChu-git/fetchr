@@ -22,11 +22,12 @@ jobs:
       # dependency-review reads the pull request diff.
       pull-requests: read
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
+          persist-credentials: false
           # Secret scanning looks through history, not only the latest commit.
           fetch-depth: 0
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
       - name: Install
@@ -41,16 +42,17 @@ jobs:
         run: bun test
       - name: Build the Worker
         run: bun run build
-      - name: Audit dependencies
-        # miniflare pins undici 7.29.0, which still has an open moderate advisory.
-        # High and critical advisories fail the job.
-        # extract-zip (via @lhci/cli > lighthouse > puppeteer-core) has no fixed
-        # release yet. It only extracts Chrome archives downloaded from Google's
-        # official hosts inside CI tooling, never user-controlled archives.
-        run: bun audit --audit-level=high --ignore=GHSA-jmr9-qjv8-65gv --ignore=GHSA-7pqw-9j4j-h8q3
       - name: Install scanners
         run: |
           bash scripts/ci/install-pinned-tools.sh "${{ runner.temp }}/ci-tools"
+      - name: Audit dependencies
+        # OSV-Scanner reads bun.lock directly. extract-zip ignores live in osv-scanner.toml.
+        run: |
+          "${{ runner.temp }}/ci-tools/osv-scanner" scan source .
+      - name: Enforce policy rules
+        run: |
+          pipx install semgrep==1.136.0
+          semgrep --config .verifier/semgrep --error .
       - name: Lint shell scripts
         run: shellcheck scripts/ci/install-pinned-tools.sh
       - name: Scan for secrets
@@ -59,8 +61,29 @@ jobs:
       - name: Lint workflows
         run: |
           "${{ runner.temp }}/ci-tools/actionlint" -color
+      - name: Audit workflow security
+        run: |
+          "${{ runner.temp }}/ci-tools/zizmor" --no-online-audits .github/workflows
       - name: Review dependency changes
         if: github.event_name == 'pull_request'
-        uses: actions/dependency-review-action@v5
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5
         with:
           fail-on-severity: high
+
+  e2e:
+    name: e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+      - name: Install
+        run: bun install --frozen-lockfile
+      - name: Install Chromium
+        run: bunx playwright install chromium --with-deps
+      - name: Run e2e
+        run: bunx playwright test

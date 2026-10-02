@@ -134,6 +134,8 @@ async function openYoutube(id: string): Promise<{
         properties.push(`sig: exportedVars.sigFunction(${JSON.stringify(runtime.sig)})`)
       }
       const code = `${data.output}\nreturn { ${properties.join(", ")} }`
+      // youtubei.js hands us the player's own transform to run; this is the documented shim shape, not user input.
+      // oxlint-disable-next-line typescript/no-implied-eval
       return new Function(code)()
     }
     evaluatorReady = true

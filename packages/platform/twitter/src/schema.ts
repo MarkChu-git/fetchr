@@ -58,5 +58,4 @@ const ProtectedTweet = Schema.Struct({
 
 export const SyndicationResult = Schema.Union([ProtectedTweet, Tweet])
 
-export type SyndicationBody = typeof SyndicationResult.Type
 export type TweetPayload = typeof Tweet.Type

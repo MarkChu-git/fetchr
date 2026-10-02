@@ -223,7 +223,9 @@ test("fixtures are anonymous and extraction does not call the network", async ()
   const original = globalThis.fetch
   globalThis.fetch = Object.assign(
     (input: string | URL | Request): Promise<Response> => {
-      calls.push(String(input))
+      calls.push(
+        typeof input === "string" ? input : input instanceof URL ? input.href : input.url,
+      )
       return Promise.reject(new Error("network disabled"))
     },
     { preconnect: original.preconnect },

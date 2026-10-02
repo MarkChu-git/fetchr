@@ -128,6 +128,8 @@ function failureForPage(
     case "json":
       return undefined
   }
+  // The switch is exhaustive over ScriptExtraction, but keep the fallthrough explicit.
+  return undefined
 }
 
 function redirectFailure(input: URL, failure: ExtractFailure): ExtractFailure {

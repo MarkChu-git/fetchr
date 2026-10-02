@@ -1,7 +1,7 @@
 import { hostMatches } from "@fetchr/core"
 
 /** Known entry hosts. `tiktok.com` also covers later subdomains such as regional web hosts. */
-export const tiktokHosts = [
+const tiktokHosts = [
   "tiktok.com",
   "www.tiktok.com",
   "m.tiktok.com",

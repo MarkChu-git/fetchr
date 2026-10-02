@@ -45,3 +45,7 @@ graphify-out/
 
 # Lighthouse CI artifacts
 .lighthouseci/
+
+# Playwright
+test-results/
+playwright-report/

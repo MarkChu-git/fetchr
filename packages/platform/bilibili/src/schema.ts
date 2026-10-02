@@ -6,7 +6,7 @@ const schemaChanged: ExtractFailure = {
   message: "Bilibili response did not match the expected schema.",
 }
 
-export const Owner = Schema.Struct({
+const Owner = Schema.Struct({
   mid: Schema.optionalKey(Schema.Number),
   name: Schema.optionalKey(Schema.String),
   face: Schema.optionalKey(Schema.String),
@@ -24,12 +24,6 @@ export const ViewData = Schema.Struct({
 
 export type ViewData = typeof ViewData.Type
 
-export const ViewEnvelope = Schema.Struct({
-  code: Schema.Number,
-  message: Schema.optionalKey(Schema.String),
-  data: Schema.NullOr(ViewData),
-})
-
 export const DashStream = Schema.Struct({
   id: Schema.optionalKey(Schema.Number),
   baseUrl: Schema.optionalKey(Schema.String),
@@ -46,14 +40,14 @@ export const DashStream = Schema.Struct({
 
 export type DashStream = typeof DashStream.Type
 
-export const Dash = Schema.Struct({
+const Dash = Schema.Struct({
   duration: Schema.optionalKey(Schema.Number),
   minBufferTime: Schema.optionalKey(Schema.Number),
   video: Schema.optionalKey(Schema.NullOr(Schema.Array(DashStream))),
   audio: Schema.optionalKey(Schema.NullOr(Schema.Array(DashStream))),
 })
 
-export const Durl = Schema.Struct({
+const Durl = Schema.Struct({
   order: Schema.optionalKey(Schema.Number),
   length: Schema.optionalKey(Schema.Number),
   size: Schema.optionalKey(Schema.Number),

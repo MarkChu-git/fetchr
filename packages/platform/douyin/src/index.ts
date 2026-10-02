@@ -16,7 +16,7 @@ function matchedDetail(
   transport: Transport,
   id: string,
   requestFor: (id: string, attempt: 0 | 1) => Request,
-): Effect.Effect<unknown | undefined, ExtractFailure> {
+): Effect.Effect<unknown, ExtractFailure> {
   return Effect.gen(function* () {
     for (const attempt of [0, 1] as const) {
       const response = yield* transport.request(requestFor(id, attempt))

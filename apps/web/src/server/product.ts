@@ -36,7 +36,7 @@ export function proxySecret(): string {
   throw new Error("FETCHR_PROXY_SECRET is required")
 }
 
-export const productExtractors = [
+const productExtractors = [
   fixtureExtractor,
   youtubeExtractor,
   xiaohongshuExtractor,
@@ -55,7 +55,7 @@ export const productExtractors = [
 const fallbackUserAgent =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 
-export function headersForUpstream(source: HeadersInit): Headers {
+function headersForUpstream(source: HeadersInit): Headers {
   const headers = new Headers(source)
   const userAgent = headers.get("user-agent")
   if (userAgent === null || userAgent.length === 0) {
@@ -64,7 +64,7 @@ export function headersForUpstream(source: HeadersInit): Headers {
   return headers
 }
 
-export const fetchTransport: Transport = {
+const fetchTransport: Transport = {
   request: (input) =>
     Effect.tryPromise({
       try: () =>

@@ -102,7 +102,7 @@ export const ApolloState = Schema.Struct({
   defaultClient: Schema.Record(Schema.String, Schema.Unknown),
 })
 
-export const SharePhoto = Schema.Struct({
+const SharePhoto = Schema.Struct({
   photoId: Schema.String,
   caption: maybe(Schema.String),
   userEid: maybe(Schema.String),
