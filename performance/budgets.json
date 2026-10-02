@@ -1,0 +1,20 @@
+{
+  "absolute": {
+    "comment": "Hard limits for apps/web/dist/client, gzip bytes. Headroom is roughly 25% over the v0.4.0 baseline.",
+    "totalGzipKb": 650,
+    "jsTotalGzipKb": 430,
+    "mainEntryGzipKb": 130,
+    "largestChunkGzipKb": 170
+  },
+  "relative": {
+    "comment": "Growth vs the baseline below. warnPct only reports; failPct blocks.",
+    "warnPct": 5,
+    "failPct": 10
+  },
+  "baseline": {
+    "totalGzipKb": 514.47265625,
+    "jsTotalGzipKb": 356.005859375,
+    "mainEntryGzipKb": 103.6044921875,
+    "largestChunkGzipKb": 133.5732421875
+  }
+}

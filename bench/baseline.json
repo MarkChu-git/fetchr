@@ -1,0 +1,22 @@
+{
+  "proxy token sign+verify": {
+    "nsPerOp": 36528,
+    "blocking": true
+  },
+  "zipStore: 2MB across two entries": {
+    "nsPerOp": 4393832,
+    "blocking": false
+  },
+  "detectUrls: share text with two links": {
+    "nsPerOp": 8468,
+    "blocking": true
+  },
+  "douyin match: video url": {
+    "nsPerOp": 324,
+    "blocking": false
+  },
+  "douyin match: unrelated url": {
+    "nsPerOp": 646,
+    "blocking": false
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@fetchr/bench",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fetchr/core": "workspace:*",
+    "@fetchr/delivery": "workspace:*",
+    "@fetchr/platform-douyin": "workspace:*",
+    "@fetchr/web": "workspace:*"
+  }
+}

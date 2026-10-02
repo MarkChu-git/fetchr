@@ -1,0 +1,73 @@
+name: Nightly
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  nightly:
+    name: nightly
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        with:
+          bun-version: 1.4.2
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Full verify
+        run: bun run verify
+
+      - name: Benchmarks
+        run: bun run bench
+
+      - name: Build once
+        working-directory: apps/web
+        run: bunx cf build
+
+      - name: Deploy a throwaway preview
+        id: deploy
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FETCHR_PROXY_SECRET: ${{ secrets.FETCHR_PROXY_SECRET }}
+        run: |
+          printf '{"FETCHR_PROXY_SECRET":"%s"}' "$FETCHR_PROXY_SECRET" > "$RUNNER_TEMP/secrets.json"
+          bunx cf workers versions create --prebuilt --secrets-file "$RUNNER_TEMP/secrets.json" --message "nightly" | tee "$RUNNER_TEMP/cf-out.txt"
+          PREVIEW_URL=$(grep -oE 'https://[0-9a-f]{8}-[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/cf-out.txt" | head -1)
+          if [ -z "$PREVIEW_URL" ]; then
+            echo "cf did not report a preview URL"
+            exit 1
+          fi
+          echo "previewUrl=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Install scanners
+        run: |
+          bash scripts/ci/install-pinned-tools.sh "${{ runner.temp }}/ci-tools"
+
+      - name: k6 load against the preview
+        env:
+          K6_TARGET: ${{ steps.deploy.outputs.previewUrl }}
+        run: |
+          "${{ runner.temp }}/ci-tools/k6" run performance/k6/load.js
+
+      - name: k6 soak against the preview
+        env:
+          K6_TARGET: ${{ steps.deploy.outputs.previewUrl }}
+        run: |
+          "${{ runner.temp }}/ci-tools/k6" run performance/k6/soak.js
