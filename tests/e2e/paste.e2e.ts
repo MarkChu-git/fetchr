@@ -25,3 +25,10 @@ test("an unknown URL reports a typed failure", async ({ page }) => {
   await extract(page, "https://example.com/not-a-post")
   await expect(page.getByRole("status").last()).not.toBeEmpty()
 })
+
+test("the save-to-photos button stays hidden on desktop", async ({ page }) => {
+  await extract(page, "https://fixture.test/image/album")
+  await expect(page.getByRole("button", { name: "全部下载" })).toBeVisible()
+  // Desktop Chrome cannot share files, so the button never renders.
+  await expect(page.getByRole("button", { name: "保存到相册" })).toHaveCount(0)
+})
