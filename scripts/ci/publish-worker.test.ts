@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test"
-import { liveUrlFromPreview, requireSecret, versionUploadFrom, workersDevUrlFrom } from "./publish-worker.ts"
+import { deploymentVersionFrom, liveUrlFromPreview, requireSecret, versionUploadFrom, workersDevUrlFrom } from "./publish-worker.ts"
 
 test("requireSecret rejects a missing or short value", () => {
   expect(() => requireSecret(undefined)).toThrow(/at least 16/)
@@ -54,4 +54,24 @@ test("workersDevUrlFrom prefers the Worker host and falls back to the custom dom
   expect(workersDevUrlFrom("no workers.dev url in this output")).toBe(
     "https://fetchr.hanyang.app",
   )
+})
+
+test("deploymentVersionFrom reads the serving version past the cf text header", () => {
+  const output = `cf workers deployments list
+
+List all deployments for a Worker.
+
+{
+  "deployments": [
+    {
+      "id": "deb4bfb8-1ced-4525-a7b0-c2c2709694ed",
+      "versions": [
+        { "version_id": "7d3feb00-ddf1-457f-a692-3526aa0629de", "percentage": 100 }
+      ]
+    }
+  ]
+}`
+  expect(deploymentVersionFrom(output)).toBe("7d3feb00-ddf1-457f-a692-3526aa0629de")
+  expect(deploymentVersionFrom("not json")).toBeUndefined()
+  expect(deploymentVersionFrom('{"deployments": []}')).toBeUndefined()
 })

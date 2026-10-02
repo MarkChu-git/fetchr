@@ -162,23 +162,33 @@ async function rollback(cause: unknown): Promise<never> {
   throw cause
 }
 
-/** The version serving traffic right now, from the latest deployment. API commands print JSON. */
-async function currentDeploymentVersion(): Promise<string | undefined> {
-  const output = await runCf(["workers", "deployments", "list", "--worker", workerName])
+/** Parse the version serving traffic from `cf workers deployments list` output. */
+export function deploymentVersionFrom(output: string): string | undefined {
+  // cf prints a text header before the JSON body, and the body is an object.
+  const start = output.indexOf("{")
+  if (start < 0) return undefined
   try {
-    const parsed: unknown = JSON.parse(output)
-    if (!Array.isArray(parsed)) return undefined
-    const latest: unknown = parsed[0]
-    if (typeof latest !== "object" || latest === null) return undefined
-    const versions = (latest as { versions?: unknown }).versions
+    const parsed: unknown = JSON.parse(output.slice(start))
+    if (!isRecord(parsed)) return undefined
+    const deployments = parsed.deployments
+    if (!Array.isArray(deployments)) return undefined
+    const latest: unknown = deployments[0]
+    if (!isRecord(latest)) return undefined
+    const versions = latest.versions
     if (!Array.isArray(versions)) return undefined
     const first: unknown = versions[0]
-    if (typeof first !== "object" || first === null) return undefined
-    const id = (first as { version_id?: unknown }).version_id
+    if (!isRecord(first)) return undefined
+    const id = first.version_id
     return typeof id === "string" && versionIdPattern.test(id) ? id : undefined
   } catch {
     return undefined
   }
+}
+
+/** The version serving traffic right now, from the latest deployment. */
+async function currentDeploymentVersion(): Promise<string | undefined> {
+  const output = await runCf(["workers", "deployments", "list", "--worker", workerName])
+  return deploymentVersionFrom(output)
 }
 
 async function workerExists(accountId: string, token: string): Promise<boolean> {
