@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "preview:lhci": "bun scripts/preview-compressed.mjs",
     "lhci": "lhci autorun",
+    "doctor": "astryx doctor",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "deploy": "cf deploy"
   },
@@ -36,6 +37,7 @@
   },
   "devDependencies": {
     "@astryxdesign/build": "0.6.3",
+    "@astryxdesign/cli": "0.6.3",
     "@babel/core": "7.29.6",
     "@cloudflare/vite-plugin": "1.60.2",
     "@lhci/cli": "^0.15",

@@ -33,6 +33,7 @@ export interface PageCopy {
   readonly downloadAll: string
   readonly downloadHd: string
   readonly downloadSd: string
+  readonly saveToAlbum: string
   readonly packaging: string
   readonly combine: string
   readonly fileUnreadable: string
@@ -85,6 +86,7 @@ const copy = {
     downloadAll: "全部下载",
     downloadHd: "高清 720p",
     downloadSd: "省流 540p",
+    saveToAlbum: "保存到相册",
     packaging: "正在打包",
     combine: "合成并下载",
     fileUnreadable: "浏览器读不到这个文件",
@@ -111,6 +113,7 @@ const copy = {
     downloadAll: "Download all",
     downloadHd: "HD 720p",
     downloadSd: "SD 540p",
+    saveToAlbum: "Save to Photos",
     packaging: "Preparing the zip",
     combine: "Combine and download",
     fileUnreadable: "The browser could not read this file",

@@ -12,7 +12,7 @@ import type { PageCopy } from "./i18n"
 import type { Locale } from "./i18n"
 import { htmlLang, pageCopy } from "./i18n"
 import type { MuxWorkerResult } from "./mux-worker"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { zipStore, type ZipEntry } from "./zip"
 
 const styles = stylex.create({
@@ -336,6 +336,12 @@ export function PostView({
     heroVideo?.asset ??
     leadImage?.asset ??
     (post.media.length === 1 ? post.media[0] : undefined)
+  const primaryHref =
+    primaryAsset === undefined
+      ? undefined
+      : primaryAsset.delivery.type === "direct"
+        ? primaryAsset.delivery.url
+        : proxyHref(primaryAsset.delivery)
   const showCover =
     thumbnail !== undefined &&
     heroVideo === undefined &&
@@ -396,6 +402,7 @@ export function PostView({
                     />
                   </div>
                   <DownloadLink href={item.download} text={text} fill />
+                  <ShareToAlbum href={item.download} name={item.asset.id} text={text} />
                 </VStack>
               ))}
             </Grid>
@@ -479,6 +486,9 @@ export function PostView({
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
             {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} text={text} /> : null}
+            {primaryHref !== undefined && primaryAsset !== undefined ? (
+              <ShareToAlbum href={primaryHref} name={primaryAsset.id} text={text} />
+            ) : null}
             {qualityVariants.map((item) => (
               <DownloadLink
                 key={item.cls}
@@ -583,6 +593,86 @@ function BatchDownload({
         width="100%"
         onClick={() => {
           void onClick()
+        }}
+      />
+      {message !== undefined ? (
+        <Text type="supporting" color="secondary">
+          {message}
+        </Text>
+      ) : null}
+    </VStack>
+  )
+}
+
+const shareSizeLimit = 100 * 1024 * 1024
+
+/**
+ * "Save to Photos" via the Web Share API. Only meaningful on iOS/Android, so the
+ * button renders only when canShare accepts files. Cross-origin direct URLs stay
+ * hidden because the browser cannot read their bytes into a File.
+ */
+function ShareToAlbum({
+  href,
+  name,
+  text,
+}: {
+  readonly href: string
+  readonly name: string
+  readonly text: PageCopy
+}) {
+  const [ready, setReady] = useState(false)
+  const [message, setMessage] = useState<string | undefined>()
+
+  useEffect(() => {
+    let cancelled = false
+    async function probe() {
+      if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") return
+      const probeFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "probe.png", {
+        type: "image/png",
+      })
+      if (!navigator.canShare({ files: [probeFile] })) return
+      try {
+        // A one-byte range read answers the total size without pulling the file.
+        const response = await fetch(href, { headers: { range: "bytes=0-0" } })
+        const range = response.headers.get("content-range")
+        const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
+        if (Number.isFinite(total) && total > shareSizeLimit) return
+        if (!cancelled) setReady(true)
+      } catch {
+        // Unreadable now means unreadable later. Stay hidden.
+      }
+    }
+    void probe()
+    return () => {
+      cancelled = true
+    }
+  }, [href])
+
+  async function onShare() {
+    setMessage(undefined)
+    try {
+      const response = await fetch(href)
+      if (!response.ok) throw new Error("fetch failed")
+      const blob = await response.blob()
+      const file = new File([blob], `${name}${batchExtension(blob.type)}`, { type: blob.type })
+      if (!navigator.canShare({ files: [file] })) throw new Error("cannot share")
+      await navigator.share({ files: [file] })
+    } catch (error) {
+      // The user dismissing the share sheet is not an error.
+      if (error instanceof Error && error.name === "AbortError") return
+      setMessage(text.fileUnreadable)
+    }
+  }
+
+  if (!ready) return null
+  return (
+    <VStack gap={2} width="100%">
+      <Button
+        label={text.saveToAlbum}
+        variant="secondary"
+        width="100%"
+        onClick={() => {
+          void onShare()
         }}
       />
       {message !== undefined ? (

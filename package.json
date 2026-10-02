@@ -15,7 +15,7 @@
     "build": "bun run --cwd apps/web build",
     "deploy": "bun run --cwd apps/web deploy",
     "verify:fast": "bun run typecheck && bun run lint && bun test",
-    "verify": "bun run verify:fast && bun run knip && bun run arch",
+    "verify": "bun run verify:fast && bun run knip && bun run arch && bun run --cwd apps/web doctor",
     "knip": "knip",
     "arch": "bun run check",
     "test:e2e": "playwright test",
