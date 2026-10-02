@@ -31,6 +31,8 @@ export interface PageCopy {
   readonly emptyDescription: string
   readonly download: string
   readonly downloadAll: string
+  readonly downloadHd: string
+  readonly downloadSd: string
   readonly packaging: string
   readonly combine: string
   readonly fileUnreadable: string
@@ -81,6 +83,8 @@ const copy = {
     emptyDescription: "解析之后，视频会出现在这里。",
     download: "下载",
     downloadAll: "全部下载",
+    downloadHd: "高清 720p",
+    downloadSd: "省流 540p",
     packaging: "正在打包",
     combine: "合成并下载",
     fileUnreadable: "浏览器读不到这个文件",
@@ -105,6 +109,8 @@ const copy = {
     emptyDescription: "After you extract a link, the video shows up here.",
     download: "Download",
     downloadAll: "Download all",
+    downloadHd: "HD 720p",
+    downloadSd: "SD 540p",
     packaging: "Preparing the zip",
     combine: "Combine and download",
     fileUnreadable: "The browser could not read this file",

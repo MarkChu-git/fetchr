@@ -148,6 +148,15 @@ function isBrowserFallback(asset: MediaAsset): boolean {
   return asset.type === "video" && asset.id.endsWith(":browser")
 }
 
+// Douyin's own renditions ride along as :720p / :540p assets. They get labeled
+// download buttons in the side card, not their own stage entries.
+function qualityClass(asset: MediaAsset): "720p" | "540p" | undefined {
+  if (asset.type !== "video") return undefined
+  if (asset.id.endsWith(":720p")) return "720p"
+  if (asset.id.endsWith(":540p")) return "540p"
+  return undefined
+}
+
 function PreviewVideo({
   sources,
   poster,
@@ -195,10 +204,12 @@ function savedName(href: string, type: string): string {
 function DownloadLink({
   href,
   text,
+  label,
   fill = false,
 }: {
   readonly href: string
   readonly text: PageCopy
+  readonly label?: string
   readonly fill?: boolean
 }) {
   const [message, setMessage] = useState<string | undefined>()
@@ -242,7 +253,7 @@ function DownloadLink({
   return (
     <VStack gap={2} {...wide}>
       <Button
-        label={text.download}
+        label={label ?? text.download}
         type="button"
         variant="primary"
         {...wide}
@@ -282,7 +293,12 @@ export function PostView({
     return url === undefined ? [] : [{ asset, url }]
   })
   const heroVideo =
-    previews.find((item) => item.asset.type === "video" && !isBrowserFallback(item.asset)) ??
+    previews.find(
+      (item) =>
+        item.asset.type === "video" &&
+        !isBrowserFallback(item.asset) &&
+        qualityClass(item.asset) === undefined,
+    ) ??
     previews.find((item) => item.asset.type === "video")
   const heroSources = [
     ...(heroVideo === undefined ? [] : [heroVideo.url]),
@@ -290,6 +306,12 @@ export function PostView({
       item.asset.type === "video" && isBrowserFallback(item.asset) ? [item.url] : [],
     ),
   ]
+  const qualityVariants = post.media.flatMap((asset) => {
+    const cls = qualityClass(asset)
+    if (cls === undefined || asset.delivery.type !== "proxy") return []
+    const href = proxyHref(asset.delivery)
+    return href === undefined ? [] : [{ cls, href }]
+  })
   const images = post.media.flatMap((asset) => {
     const view = imageView(asset)
     return view === undefined ? [] : [view]
@@ -297,7 +319,7 @@ export function PostView({
   // Batch covers anything the browser can save directly: direct URLs and sealed proxy tokens.
   // Mux and playlist deliveries need client work and stay single-file.
   const batchItems = post.media.flatMap((asset) => {
-    if (isBrowserFallback(asset)) return []
+    if (isBrowserFallback(asset) || qualityClass(asset) !== undefined) return []
     if (asset.delivery.type === "direct") {
       return [{ id: asset.id, href: asset.delivery.url }]
     }
@@ -425,6 +447,7 @@ export function PostView({
             // Each gallery image already has a download. Drawing it again would add a second row of buttons.
             (primaryAsset !== undefined && asset.id === primaryAsset.id) ||
             isBrowserFallback(asset) ||
+            qualityClass(asset) !== undefined ||
             isOnStage(asset) ? null : (
               <DeliveryActions key={`${asset.id}-delivery`} asset={asset} text={text} />
             ),
@@ -456,6 +479,15 @@ export function PostView({
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
             {primaryAsset !== undefined ? <PrimaryAction asset={primaryAsset} text={text} /> : null}
+            {qualityVariants.map((item) => (
+              <DownloadLink
+                key={item.cls}
+                href={item.href}
+                text={text}
+                label={item.cls === "720p" ? text.downloadHd : text.downloadSd}
+                fill
+              />
+            ))}
             {batchItems.length > 1 ? (
               <BatchDownload items={batchItems} post={post} text={text} />
             ) : null}
