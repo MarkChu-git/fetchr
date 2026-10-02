@@ -34,15 +34,17 @@ jobs:
         run: |
           git fetch --depth 1 origin "${{ github.event.pull_request.base.sha }}"
           git checkout --detach "${{ github.event.pull_request.base.sha }}"
-          if [ ! -f bench/index.ts ]; then
+          if [ -f bench/index.ts ]; then
+            bun install --frozen-lockfile
+            bun run bench -- --write "$RUNNER_TEMP/base-baseline.json"
+          else
             echo "base has no bench harness yet; skipping the regression compare"
-            exit 0
           fi
-          bun install --frozen-lockfile
-          bun run bench -- --write "$RUNNER_TEMP/base-baseline.json"
           git checkout --detach "${{ github.event.pull_request.head.sha }}"
           bun install --frozen-lockfile
-          bun run bench -- --baseline "$RUNNER_TEMP/base-baseline.json"
+          if [ -f "$RUNNER_TEMP/base-baseline.json" ]; then
+            bun run bench -- --baseline "$RUNNER_TEMP/base-baseline.json"
+          fi
 
       - name: Build the web app
         run: bun run build
