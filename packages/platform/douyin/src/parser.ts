@@ -276,7 +276,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * Web detail is `{ aweme_detail }`. The mobile feed mixes the target work into `aweme_list`.
  * Never take item 0. That would download a different work.
  */
-export function selectDetail(input: unknown, id: string): unknown | undefined {
+export function selectDetail(input: unknown, id: string): unknown {
   if (!isRecord(input)) return undefined
   if ("aweme_detail" in input) return input
   const list = Array.isArray(input.aweme_list)

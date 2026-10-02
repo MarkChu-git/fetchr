@@ -1,0 +1,13 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignoreBinaries": ["semgrep"],
+  "workspaces": {
+    ".": {
+      "entry": ["tests/e2e/**/*.e2e.ts"],
+      "project": ["tests/**/*.ts"]
+    },
+    "apps/web": {
+      "entry": ["cloudflare.config.ts", "scripts/*.mjs"]
+    }
+  }
+}

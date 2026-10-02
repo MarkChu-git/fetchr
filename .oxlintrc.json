@@ -36,7 +36,12 @@
     {
       "files": ["**/*.test.ts"],
       "rules": {
-        "no-await-in-loop": "off"
+        "no-await-in-loop": "off",
+        // bun:test's .rejects/.resolves matchers are awaitable at runtime, but @types/bun does not mark them Thenable.
+        "typescript/await-thenable": "off",
+        // Fetch and worker mocks assert through `as unknown as`.
+        "typescript/no-unsafe-type-assertion": "off",
+        "typescript/no-unnecessary-type-assertion": "off"
       }
     }
   ],

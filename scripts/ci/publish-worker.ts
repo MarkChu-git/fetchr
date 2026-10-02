@@ -1,13 +1,14 @@
 /**
- * Publish the Worker without printing secrets.
- * versions upload cannot create the first Worker, so that case deploys once.
+ * Publish the Worker with the cf CLI without printing secrets.
+ * versions create cannot create the first Worker, so that case deploys once.
  * Later publishes check the version URL, then shift all traffic, and roll back when the live check fails.
  */
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises"
+import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
 
-export const workerName = "fetchr-web"
+const workerName = "fetchr-web"
+const liveDomain = "https://fetchr.hanyang.app"
 
 export function requireSecret(secret: string | undefined): string {
   if (secret === undefined || secret.length < 16) {
@@ -36,30 +37,30 @@ export function liveUrlFromPreview(previewUrl: string): string {
   return `https://${liveHost}`
 }
 
-export function versionUploadFrom(jsonl: string): { readonly versionId: string; readonly previewUrl: string } {
-  const event = lastEvent(jsonl, "version-upload")
-  const versionId = stringField(event, "version_id")
-  const previewUrl = stringField(event, "preview_url")
+const versionIdPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
+const previewUrlPattern = /https:\/\/[0-9a-f]{8}-[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev/i
+
+/** cf prints the new version as a UUID plus a workers.dev preview URL, in any panel shape. */
+export function versionUploadFrom(output: string): { readonly versionId: string; readonly previewUrl: string } {
+  const versionId = versionIdPattern.exec(output)?.[0] ?? ""
+  const previewUrl = previewUrlPattern.exec(output)?.[0] ?? ""
   if (versionId.length === 0 || previewUrl.length === 0) {
     throw new Error("Version upload did not return a version id and a preview URL.")
   }
   return { versionId, previewUrl }
 }
 
-export function workersDevUrlFrom(jsonl: string): string {
-  const event = lastEvent(jsonl, "deploy")
-  const targets = event.targets
-  if (!Array.isArray(targets)) throw new Error("Deploy did not list targets.")
-  const urls = targets.filter(
-    (item): item is string =>
-      typeof item === "string" && item.startsWith("https://") && item.includes(".workers.dev"),
-  )
-  const preferred = urls.find((item) => item.startsWith(`https://${workerName}.`)) ?? urls[0]
-  if (preferred === undefined) throw new Error("Deploy did not print a workers.dev URL.")
+export function workersDevUrlFrom(output: string): string {
+  const urls = output.match(/https:\/\/[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev/gi) ?? []
+  const preferred = urls.find((url) => url.includes(`${workerName}.`)) ?? urls[0]
+  if (preferred === undefined) {
+    // The custom domain is always attached to production traffic.
+    return liveDomain
+  }
   return preferred.replace(/\/$/, "")
 }
 
-export async function smokeWorker(url: string): Promise<void> {
+async function smokeWorker(url: string): Promise<void> {
   const base = url.replace(/\/$/, "")
   await waitForHomepage(base)
   await waitForRejectedExtract(base)
@@ -80,10 +81,10 @@ async function main(): Promise<void> {
     const message = publishMessage(process.env.GITHUB_SHA)
     const exists = await workerExists(accountId, token)
     if (!exists) {
-      await publishFirstWorker(directory, secretPath, message)
+      await publishFirstWorker(secretPath, message)
       return
     }
-    await publishExistingWorker(directory, secretPath, message)
+    await publishExistingWorker(secretPath, message)
   } finally {
     await rm(directory, { recursive: true, force: true })
   }
@@ -95,48 +96,89 @@ function publishMessage(sha: string | undefined): string {
   return `fetchr ${short}`
 }
 
-async function publishFirstWorker(directory: string, secretPath: string, message: string): Promise<void> {
-  const outputPath = join(directory, "deploy.jsonl")
-  await runWrangler(["deploy", "--secrets-file", secretPath, "--message", message], outputPath)
-  const live = workersDevUrlFrom(await readFile(outputPath, "utf8"))
+async function publishFirstWorker(secretPath: string, message: string): Promise<void> {
+  const output = await runCf(["deploy", "--secrets-file", secretPath, "--message", message])
+  const live = workersDevUrlFrom(output)
   try {
     await smokeWorker(live)
   } catch (error) {
-    await rollback(directory, error)
+    await rollback(error)
   }
 }
 
-async function publishExistingWorker(directory: string, secretPath: string, message: string): Promise<void> {
-  const outputPath = join(directory, "upload.jsonl")
-  await runWrangler(
-    ["versions", "upload", "--secrets-file", secretPath, "--message", message],
-    outputPath,
-  )
-  const uploaded = versionUploadFrom(await readFile(outputPath, "utf8"))
+async function publishExistingWorker(secretPath: string, message: string): Promise<void> {
+  const uploadOutput = await runCf([
+    "workers",
+    "versions",
+    "create",
+    "--secrets-file",
+    secretPath,
+    "--message",
+    message,
+  ])
+  const uploaded = versionUploadFrom(uploadOutput)
   await smokeWorker(uploaded.previewUrl)
-  await runWrangler(
-    ["versions", "deploy", `${uploaded.versionId}@100%`, "-y", "--message", message],
-    join(directory, "promote.jsonl"),
-  )
+  await runCf([
+    "workers",
+    "deployments",
+    "create",
+    "--worker",
+    workerName,
+    "--strategy",
+    "percentage",
+    "--versions",
+    JSON.stringify([{ version_id: uploaded.versionId, percentage: 100 }]),
+  ])
   try {
     await smokeWorker(liveUrlFromPreview(uploaded.previewUrl))
   } catch (error) {
-    await rollback(directory, error)
+    await rollback(error)
   }
 }
 
-async function rollback(directory: string, error: unknown): Promise<never> {
+/** Roll back by deploying the previous version again. cf has no dedicated rollback command. */
+async function rollback(cause: unknown): Promise<never> {
   try {
-    await runWrangler(
-      ["rollback", "-y", "--message", "Live smoke failed"],
-      join(directory, "rollback.jsonl"),
-    )
+    const current = await currentDeploymentVersion()
+    if (current !== undefined) {
+      await runCf([
+        "workers",
+        "deployments",
+        "create",
+        "--worker",
+        workerName,
+        "--strategy",
+        "percentage",
+        "--versions",
+        JSON.stringify([{ version_id: current, percentage: 100 }]),
+        "--bypass-deployment-checks",
+      ])
+    }
   } catch (rollbackError) {
-    const smokeText = error instanceof Error ? error.message : "Live smoke failed."
+    const smokeText = cause instanceof Error ? cause.message : "Live smoke failed."
     const rollbackText = rollbackError instanceof Error ? rollbackError.message : "rollback failed"
     throw new Error(`${smokeText} Rollback also failed: ${rollbackText}`, { cause: rollbackError })
   }
-  throw error
+  throw cause
+}
+
+/** The version serving traffic right now, from the latest deployment. API commands print JSON. */
+async function currentDeploymentVersion(): Promise<string | undefined> {
+  const output = await runCf(["workers", "deployments", "list", "--worker", workerName])
+  try {
+    const parsed: unknown = JSON.parse(output)
+    if (!Array.isArray(parsed)) return undefined
+    const latest: unknown = parsed[0]
+    if (typeof latest !== "object" || latest === null) return undefined
+    const versions = (latest as { versions?: unknown }).versions
+    if (!Array.isArray(versions)) return undefined
+    const first: unknown = versions[0]
+    if (typeof first !== "object" || first === null) return undefined
+    const id = (first as { version_id?: unknown }).version_id
+    return typeof id === "string" && versionIdPattern.test(id) ? id : undefined
+  } catch {
+    return undefined
+  }
 }
 
 async function workerExists(accountId: string, token: string): Promise<boolean> {
@@ -153,18 +195,21 @@ async function workerExists(accountId: string, token: string): Promise<boolean> 
   throw new Error(`Worker lookup returned HTTP ${response.status}.`)
 }
 
-async function runWrangler(args: readonly string[], outputPath: string): Promise<void> {
-  // Bun's node:child_process types omit EventEmitter, so this uses Bun.spawn.
-  const child = Bun.spawn(["bunx", "wrangler", ...args], {
+async function runCf(args: readonly string[]): Promise<string> {
+  const child = Bun.spawn(["bunx", "cf", ...args], {
     stdin: "ignore",
-    stdout: "inherit",
-    stderr: "inherit",
-    env: { ...process.env, WRANGLER_OUTPUT_FILE_PATH: outputPath },
+    stdout: "pipe",
+    stderr: "pipe",
   })
   const code = await child.exited
+  const stdout = await new Response(child.stdout).text()
+  const stderr = await new Response(child.stderr).text()
   if (code !== 0) {
-    throw new Error(`wrangler ${args.join(" ")} exited ${code}.`)
+    // The panel can carry the reason. Print stderr, never the secrets file path.
+    console.error(stderr)
+    throw new Error(`cf ${args.join(" ")} exited ${code}.`)
   }
+  return `${stdout}\n${stderr}`
 }
 
 async function waitForHomepage(url: string): Promise<void> {
@@ -223,24 +268,6 @@ function delay(ms: number): Promise<void> {
   return new Promise((resolve) => {
     setTimeout(resolve, ms)
   })
-}
-
-function lastEvent(jsonl: string, type: string): Record<string, unknown> {
-  let found: Record<string, unknown> | undefined
-  for (const line of jsonl.split("\n")) {
-    const trimmed = line.trim()
-    if (trimmed.length === 0) continue
-    const parsed: unknown = JSON.parse(trimmed)
-    if (!isRecord(parsed) || parsed.type !== type) continue
-    found = parsed
-  }
-  if (found === undefined) throw new Error(`Wrangler output has no ${type} event.`)
-  return found
-}
-
-function stringField(event: Record<string, unknown>, key: string): string {
-  const value = event[key]
-  return typeof value === "string" ? value : ""
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

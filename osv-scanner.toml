@@ -1,0 +1,10 @@
+# extract-zip (via @lhci/cli > lighthouse > puppeteer-core) has no fixed
+# release yet. It only extracts Chrome archives downloaded from Google's
+# official hosts inside CI tooling, never user-controlled archives.
+[[IgnoredVulns]]
+id = "GHSA-jmr9-qjv8-65gv"
+reason = "extract-zip has no fixed release; only extracts Google's official Chrome archives in CI tooling"
+
+[[IgnoredVulns]]
+id = "GHSA-7pqw-9j4j-h8q3"
+reason = "extract-zip has no fixed release; only extracts Google's official Chrome archives in CI tooling"

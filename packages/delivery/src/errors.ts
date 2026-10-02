@@ -1,4 +1,4 @@
-export const proxyTokenErrorCodes = [
+const proxyTokenErrorCodes = [
   "invalid_token",
   "expired",
   "forbidden_target",

@@ -20,6 +20,7 @@ const skippedDirectories = new Set([
   ".git",
   ".gitnexus",
   ".wrangler",
+  ".cloudflare",
 ])
 
 const forbiddenDependencies = new Set([
@@ -48,7 +49,7 @@ const isolatedPackages = new Set([
 
 const runtimeApis = ["file", "spawn", "spawnSync", "serve", "write", "listen"] as const
 
-export const forbiddenLockfiles = [
+const forbiddenLockfiles = [
   "package-lock.json",
   "pnpm-lock.yaml",
   "yarn.lock",
@@ -75,7 +76,7 @@ export function isShippedSource(relativePath: string): boolean {
   return /^packages\/platform\/[^/]+\/src\//.test(path)
 }
 
-export function isWorkspacePackageDir(relativeDir: string): boolean {
+function isWorkspacePackageDir(relativeDir: string): boolean {
   return /^(?:apps|packages)\/[^/]+$/.test(relativeDir) || /^packages\/platform\/[^/]+$/.test(relativeDir)
 }
 

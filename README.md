@@ -163,14 +163,15 @@ https://deploy.workers.cloudflare.com/?url=https://github.com/MarkChu-git/fetchr
 
 `apps/web` depends on the workspace packages beside it. A URL that points at `apps/web` clones that directory alone, so those packages are absent. Cloudflare asks for `FETCHR_PROXY_SECRET` and `TURNSTILE_SECRET` before the deploy.
 
-A push to `main` builds `apps/web` and publishes `fetchr-web`. The first publish, when the Worker does not exist yet, runs `wrangler deploy` and then checks the live Worker. Later pushes upload a version, check that version, shift traffic to it, and check the live Worker again. A failed live check rolls that publish back.
+A push to `main` builds `apps/web` and publishes `fetchr-web`. The first publish, when the Worker does not exist yet, runs `cf deploy` and then checks the live Worker. Later pushes upload a version, check that version, shift traffic to it, and check the live Worker again. A failed live check rolls that publish back.
 
-`bun run deploy` builds `apps/web` and runs `wrangler deploy` directly. That command skips the version check used on `main`.
+`bun run deploy` builds `apps/web` and runs `cf deploy` directly. That command skips the version check used on `main`.
 
-To roll back from `apps/web`:
+To roll back from `apps/web`, deploy the previous version again:
 
 ```sh
-bunx wrangler rollback
+bunx cf workers deployments list --worker fetchr-web
+bunx cf workers deployments create --worker fetchr-web --strategy percentage --versions '[{"version_id":"<previous>","percentage":100}]' --bypass-deployment-checks
 ```
 
 The `main` publish reads these GitHub Actions secrets:

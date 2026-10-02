@@ -4,7 +4,7 @@ import type { ExtractErrorCode, ExtractFailure } from "@fetchr/core"
  * Platform codes stay in this package. Core only receives a shared code.
  * `cause` keeps the platform code for logs and tests.
  */
-export const tiktokErrorCodes = [
+const tiktokErrorCodes = [
   "UNSUPPORTED_URL",
   "SHORT_LINK_RESOLVE_FAILED",
   "UPSTREAM_FETCH_FAILED",

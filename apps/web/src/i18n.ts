@@ -1,6 +1,6 @@
 import type { Platform } from "@fetchr/core"
 
-export const locales = ["zh", "en"] as const
+const locales = ["zh", "en"] as const
 export type Locale = (typeof locales)[number]
 
 export const localeCookie = "fetchr_locale"

@@ -59,7 +59,7 @@ function parseDocument(body: string): unknown {
   throw new Error("missing kuaishou state")
 }
 
-function assignedObject(source: string, marker: string): unknown | undefined {
+function assignedObject(source: string, marker: string): unknown {
   let from = 0
   while (from < source.length) {
     const at = source.indexOf(marker, from)

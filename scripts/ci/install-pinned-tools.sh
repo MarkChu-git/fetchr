@@ -28,3 +28,18 @@ install_one \
   "8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8" \
   "actionlint.tar.gz" \
   "actionlint"
+
+install_one \
+  "https://github.com/zizmorcore/zizmor/releases/download/v1.30.1/zizmor-x86_64-unknown-linux-gnu.tar.gz" \
+  "e65324f4430c2717591937edcec90ccbefaf14c174f8ec9415e03ca875b46e1a" \
+  "zizmor.tar.gz" \
+  "zizmor"
+
+# osv-scanner ships a bare binary, not a tarball.
+osv_path="${destination}/osv-scanner"
+curl --fail --silent --show-error --location --output "$osv_path" \
+  "https://github.com/google/osv-scanner/releases/download/v2.6.0/osv-scanner_linux_amd64"
+printf '%s  %s\n' \
+  "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108" \
+  "$osv_path" | sha256sum --check --status
+chmod +x "$osv_path"

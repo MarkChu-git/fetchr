@@ -23,7 +23,7 @@ const formatSchema = Schema.Struct({
   drmFamilies: Schema.optionalKey(Schema.Array(Schema.String)),
 })
 
-export const playerResponseSchema = Schema.Struct({
+const playerResponseSchema = Schema.Struct({
   playabilityStatus: Schema.Struct({
     status: Schema.String,
     reason: Schema.optionalKey(Schema.String),

@@ -167,8 +167,11 @@ async function readWithHtmlRewriter(html: string): Promise<ScriptExtraction> {
 
 function htmlRewriterConstructor(): HtmlRewriterConstructor | undefined {
   const candidate: unknown = Reflect.get(globalThis, "HTMLRewriter")
-  if (typeof candidate !== "function") return undefined
-  return candidate as HtmlRewriterConstructor
+  return isHtmlRewriterConstructor(candidate) ? candidate : undefined
+}
+
+function isHtmlRewriterConstructor(value: unknown): value is HtmlRewriterConstructor {
+  return typeof value === "function"
 }
 
 function classifyPayload(raw: string): ScriptExtraction {

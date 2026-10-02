@@ -1,4 +1,5 @@
 .wrangler/
+.cloudflare/
 .dev.vars
 dist/
 .output/

@@ -86,6 +86,8 @@ function sourcesFromMessage(data: unknown): MuxSourceStreams {
 
 function byteStream(value: unknown): ReadableStream<Uint8Array> | null {
   if (typeof ReadableStream !== "undefined" && value instanceof ReadableStream) {
+    // instanceof narrows to ReadableStream<any>; the mux reader only ever pulls bytes.
+    // oxlint-disable-next-line typescript/no-unsafe-type-assertion
     return value as ReadableStream<Uint8Array>
   }
   return null
@@ -102,5 +104,7 @@ function runningAsDedicatedWorker(): boolean {
 
 // Bun tests import this module on the main thread. Attach only inside a worker.
 if (runningAsDedicatedWorker()) {
+  // The dedicated worker scope carries the message ports MuxWorkerHost needs.
+  // oxlint-disable-next-line typescript/no-unsafe-type-assertion, typescript/no-unnecessary-type-assertion
   attachMuxWorker(globalThis as unknown as MuxWorkerHost)
 }
