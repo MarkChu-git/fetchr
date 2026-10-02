@@ -23,31 +23,35 @@ test("liveUrlFromPreview rejects a URL that is not a version preview", () => {
   expect(() => liveUrlFromPreview("https://abcdef12-other.account.workers.dev")).toThrow(/workers.dev/)
 })
 
-test("versionUploadFrom reads the last upload event", () => {
-  const jsonl = [
-    JSON.stringify({ type: "version-upload", version_id: "old", preview_url: "https://old.example" }),
-    JSON.stringify({
-      type: "version-upload",
-      version_id: "11111111-1111-1111-1111-111111111111",
-      preview_url: "https://abcdef12-fetchr-web.account.workers.dev",
-    }),
-  ].join("\n")
+const cfUploadPanel = `
+┌  Upload
+│  Worker Version ID: 11111111-1111-1111-1111-111111111111
+│  Version Preview URL: https://abcdef12-fetchr-web.account.workers.dev
+└  Done
+`
 
-  expect(versionUploadFrom(jsonl)).toEqual({
+test("versionUploadFrom reads the version id and preview URL from cf output", () => {
+  expect(versionUploadFrom(cfUploadPanel)).toEqual({
     versionId: "11111111-1111-1111-1111-111111111111",
     previewUrl: "https://abcdef12-fetchr-web.account.workers.dev",
   })
 })
 
-test("versionUploadFrom fails closed when the preview URL is absent", () => {
-  const jsonl = JSON.stringify({ type: "version-upload", version_id: "abc", preview_url: "" })
-  expect(() => versionUploadFrom(jsonl)).toThrow(/preview URL/)
+test("versionUploadFrom fails closed when either field is absent", () => {
+  expect(() => versionUploadFrom("no ids here")).toThrow(/preview URL/)
+  expect(() =>
+    versionUploadFrom("Version 11111111-1111-1111-1111-111111111111 without a preview"),
+  ).toThrow(/preview URL/)
+  expect(() =>
+    versionUploadFrom("https://abcdef12-fetchr-web.account.workers.dev without an id"),
+  ).toThrow(/preview URL/)
 })
 
-test("workersDevUrlFrom prefers the Worker host", () => {
-  const jsonl = JSON.stringify({
-    type: "deploy",
-    targets: ["example.com/path", "https://other.account.workers.dev", "https://fetchr-web.account.workers.dev"],
-  })
-  expect(workersDevUrlFrom(jsonl)).toBe("https://fetchr-web.account.workers.dev")
+test("workersDevUrlFrom prefers the Worker host and falls back to the custom domain", () => {
+  const panel =
+    "Deployed to https://other.account.workers.dev and https://fetchr-web.account.workers.dev"
+  expect(workersDevUrlFrom(panel)).toBe("https://fetchr-web.account.workers.dev")
+  expect(workersDevUrlFrom("no workers.dev url in this output")).toBe(
+    "https://fetchr.hanyang.app",
+  )
 })

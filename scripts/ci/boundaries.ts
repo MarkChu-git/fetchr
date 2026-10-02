@@ -20,6 +20,7 @@ const skippedDirectories = new Set([
   ".git",
   ".gitnexus",
   ".wrangler",
+  ".cloudflare",
 ])
 
 const forbiddenDependencies = new Set([

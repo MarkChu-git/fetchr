@@ -163,14 +163,15 @@ https://deploy.workers.cloudflare.com/?url=https://github.com/MarkChu-git/fetchr
 
 `apps/web` 依赖旁边的工作区包。指向 `apps/web` 的地址只会克隆那个目录，这些包不会进来。Cloudflare 会先询问 `FETCHR_PROXY_SECRET` 和 `TURNSTILE_SECRET`，再部署。
 
-推送到 `main` 会构建 `apps/web` 并发布 `fetchr-web`。Worker 还不存在时，第一次发布执行 `wrangler deploy`，然后检查线上 Worker。之后的推送会上传一个版本、检查它、把流量切过去，再检查一次线上 Worker。线上检查失败时，这次发布会回滚。
+推送到 `main` 会构建 `apps/web` 并发布 `fetchr-web`。Worker 还不存在时，第一次发布执行 `cf deploy`，然后检查线上 Worker。之后的推送会上传一个版本、检查它、把流量切过去，再检查一次线上 Worker。线上检查失败时，这次发布会回滚。
 
-`bun run deploy` 会构建 `apps/web` 并直接执行 `wrangler deploy`。这条命令跳过 `main` 上使用的版本检查。
+`bun run deploy` 会构建 `apps/web` 并直接执行 `cf deploy`。这条命令跳过 `main` 上使用的版本检查。
 
-在 `apps/web` 里回滚：
+在 `apps/web` 里回滚，把上一个版本重新部署到全部流量：
 
 ```sh
-bunx wrangler rollback
+bunx cf workers deployments list --worker fetchr-web
+bunx cf workers deployments create --worker fetchr-web --strategy percentage --versions '[{"version_id":"<上一个版本>","percentage":100}]' --bypass-deployment-checks
 ```
 
 `main` 上的发布读取这些 GitHub Actions 密钥：
