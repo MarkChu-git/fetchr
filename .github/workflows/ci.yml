@@ -52,6 +52,8 @@ jobs:
       - name: Enforce policy rules
         run: |
           pipx install semgrep==1.136.0
+          # semgrep's wrapper still imports pkg_resources.
+          pipx inject semgrep setuptools
           semgrep --config .verifier/semgrep --error .
       - name: Lint shell scripts
         run: shellcheck scripts/ci/install-pinned-tools.sh
