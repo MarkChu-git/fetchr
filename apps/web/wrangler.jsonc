@@ -1,4 +1,7 @@
 {
+  // cf reads cloudflare.config.ts. This file stays because @cloudflare/vite-plugin
+  // (vite build/dev) still reads its Worker config from wrangler.jsonc.
+  // Deleting it breaks `bun run build`. Revisit when the plugin reads cloudflare.config.ts.
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "fetchr-web",
   "compatibility_date": "2026-09-25",
