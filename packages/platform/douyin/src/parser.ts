@@ -30,11 +30,19 @@ const PlayAddr = Schema.Struct({
   uri: Schema.optionalKey(Schema.String),
 })
 
+const BitRateTier = Schema.Struct({
+  gear_name: Schema.optionalKey(Schema.String),
+  bit_rate: Schema.optionalKey(Schema.Number),
+  play_addr: Schema.optionalKey(PlayAddr),
+})
+
 const VideoPayload = Schema.Struct({
   width: Schema.optionalKey(Schema.Number),
   height: Schema.optionalKey(Schema.Number),
   cover: Schema.optionalKey(UrlList),
   play_addr: Schema.optionalKey(PlayAddr),
+  // Douyin's own pre-encoded renditions. gear_name is like 720_1_1 or 540_2_1.
+  bit_rate: Schema.optionalKey(Schema.NullOr(Schema.Array(BitRateTier))),
 })
 
 const ImagePayload = Schema.Struct({
@@ -198,6 +206,30 @@ function videoAsset(detail: Aweme, url: string, id = detail.aweme_id): VideoAsse
   }
 }
 
+/** One rendition per resolution class: the highest bitrate the class offers. */
+function qualityTiers(detail: Aweme): readonly VideoAsset[] {
+  const tiers = detail.video?.bit_rate
+  if (tiers === undefined || tiers === null) return []
+  const best = new Map<string, { rate: number; url: string }>()
+  for (const tier of tiers) {
+    const gear = tier.gear_name ?? ""
+    const cls = gear.startsWith("720") ? "720p" : gear.startsWith("540") ? "540p" : undefined
+    if (cls === undefined) continue
+    const url = firstHttpUrl(tier.play_addr?.url_list)
+    if (url === undefined) continue
+    const rate = tier.bit_rate ?? 0
+    const current = best.get(cls)
+    if (current === undefined || rate > current.rate) best.set(cls, { rate, url })
+  }
+  const assets: VideoAsset[] = []
+  for (const cls of ["720p", "540p"] as const) {
+    const tier = best.get(cls)
+    // Ids end in :720p / :540p; the page lists them as labeled quality downloads, not as separate videos.
+    if (tier !== undefined) assets.push(videoAsset(detail, tier.url, `${detail.aweme_id}:${cls}`))
+  }
+  return assets
+}
+
 function mediaFrom(detail: Aweme): readonly MediaAsset[] {
   const images = detail.images
   if (images !== undefined && images !== null && images.length > 0) {
@@ -223,6 +255,7 @@ function mediaFrom(detail: Aweme): readonly MediaAsset[] {
   if (original !== undefined && fallback !== undefined) {
     assets.push(videoAsset(detail, fallback, `${detail.aweme_id}:browser`))
   }
+  assets.push(...qualityTiers(detail))
   return assets
 }
 

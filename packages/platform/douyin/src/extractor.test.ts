@@ -36,6 +36,32 @@ const videoPost = {
         upstreamHeaders: { Referer: "https://www.douyin.com/" },
       },
     },
+    {
+      type: "video",
+      id: `${videoId}:720p`,
+      width: 720,
+      height: 1280,
+      thumbnail: "https://cdn.example/covers/clip.jpg",
+      delivery: {
+        type: "proxy",
+        token: "pending",
+        upstreamUrl: "https://cdn.example/media/clip-720.mp4",
+        upstreamHeaders: { Referer: "https://www.douyin.com/" },
+      },
+    },
+    {
+      type: "video",
+      id: `${videoId}:540p`,
+      width: 720,
+      height: 1280,
+      thumbnail: "https://cdn.example/covers/clip.jpg",
+      delivery: {
+        type: "proxy",
+        token: "pending",
+        upstreamUrl: "https://cdn.example/media/clip-540.mp4",
+        upstreamHeaders: { Referer: "https://www.douyin.com/" },
+      },
+    },
   ],
 } as const
 
@@ -230,10 +256,13 @@ describe("douyin extractor", () => {
         }),
       ),
     )
-    expect(post.media).toHaveLength(2)
+    expect(post.media).toHaveLength(4)
     const original = post.media[0]?.delivery
     const fallback = post.media[1]?.delivery
     expect(post.media[1]?.id).toBe(`${videoId}:browser`)
+    // Douyin's own renditions follow as labeled quality downloads.
+    expect(post.media[2]?.id).toBe(`${videoId}:720p`)
+    expect(post.media[3]?.id).toBe(`${videoId}:540p`)
     expect(original?.type).toBe("proxy")
     expect(fallback?.type).toBe("proxy")
     if (original?.type !== "proxy" || fallback?.type !== "proxy") return
