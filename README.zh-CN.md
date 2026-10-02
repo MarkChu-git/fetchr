@@ -192,4 +192,4 @@ bunx cf workers deployments create --worker fetchr-web --strategy percentage --v
 
 ## 许可
 
-本仓库没有许可文件。
+[AGPL-3.0-or-later](LICENSE)。

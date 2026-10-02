@@ -196,4 +196,4 @@ This repository has no security policy.
 
 ## License
 
-This repository has no license file.
+[AGPL-3.0-or-later](LICENSE).
