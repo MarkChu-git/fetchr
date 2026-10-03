@@ -94,7 +94,12 @@ export async function servingVersion(): Promise<string> {
 }
 
 /** Shift traffic. percent < 100 splits with the previous version; 100 takes over. */
-export async function shiftTraffic(candidate: string, previous: string, percent: number): Promise<void> {
+export async function shiftTraffic(
+  candidate: string,
+  previous: string,
+  percent: number,
+  bypassChecks = false,
+): Promise<void> {
   const versions =
     percent >= 100
       ? [{ version_id: candidate, percentage: 100 }]
@@ -112,7 +117,9 @@ export async function shiftTraffic(candidate: string, previous: string, percent:
     "percentage",
     "--versions",
     JSON.stringify(versions),
-    ...(percent >= 100 ? [] : ["--bypass-deployment-checks"]),
+    // bypass exists for rollbacks: Cloudflare blocks redeploying an older
+    // version when secrets changed in between. Canary stages must not use it.
+    ...(bypassChecks ? ["--bypass-deployment-checks"] : []),
   ])
   console.log(`traffic: ${percent}% -> ${candidate}`)
 }

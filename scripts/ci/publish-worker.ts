@@ -94,7 +94,7 @@ async function publishExistingWorker(secretPath: string, message: string): Promi
 async function rollback(cause: unknown, previous?: string): Promise<never> {
   try {
     const target = previous ?? (await servingVersion())
-    await shiftTraffic(target, target, 100)
+    await shiftTraffic(target, target, 100, true)
   } catch (rollbackError) {
     const smokeText = cause instanceof Error ? cause.message : "Live smoke failed."
     const rollbackText = rollbackError instanceof Error ? rollbackError.message : "rollback failed"

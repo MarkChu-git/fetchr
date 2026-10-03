@@ -44,6 +44,8 @@ jobs:
           bun install --frozen-lockfile
           if [ -f "$RUNNER_TEMP/base-baseline.json" ]; then
             bun run bench -- --baseline "$RUNNER_TEMP/base-baseline.json"
+          else
+            bun run bench
           fi
 
       - name: Build the web app

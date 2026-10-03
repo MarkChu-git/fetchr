@@ -24,6 +24,9 @@ async function main() {
   const candidate = arg("--version")
   if (candidate === undefined) throw new Error("--version <worker version id> is required")
   const mode = arg("--mode") ?? "release"
+  if (mode !== "release" && mode !== "default") {
+    throw new Error(`--mode must be release or default, got "${mode}"`)
+  }
   const stages = mode === "default" ? defaultStages : releaseStages
   const previous = await servingVersion()
   console.log(`Rollout: ${candidate}`)
@@ -45,7 +48,7 @@ async function main() {
     if (!healthy) {
       console.error(`\nStage ${stage}% failed the health gate. Rolling back to ${previous}.`)
       // oxlint-disable-next-line no-await-in-loop
-      await shiftTraffic(previous, candidate, 100)
+      await shiftTraffic(previous, candidate, 100, true)
       console.error(`Rolled back: ${previous} @ 100%`)
       process.exit(1)
     }
