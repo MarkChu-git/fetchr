@@ -6,7 +6,8 @@
   "workspaces": [
     "apps/*",
     "packages/*",
-    "packages/platform/*"
+    "packages/platform/*",
+    "bench"
   ],
   "scripts": {
     "lint": "oxlint --type-aware --deny-warnings",
@@ -20,7 +21,18 @@
     "knip": "knip",
     "arch": "bun run check",
     "test:e2e": "playwright test",
-    "policy": "semgrep --config .verifier/semgrep --error ."
+    "policy": "semgrep --config .verifier/semgrep --error .",
+    "bench": "bun run bench/index.ts",
+    "bundle:check": "bun run performance/bundle-budget.ts",
+    "perf:smoke": "k6 run performance/k6/smoke.js",
+    "perf:load": "k6 run performance/k6/load.js",
+    "perf:soak": "k6 run performance/k6/soak.js",
+    "compat": "bun run scripts/compat-check.ts",
+    "generate": "bun run scripts/generate.ts",
+    "generate:check": "bun run scripts/generate.ts --check",
+    "release:health": "bun run scripts/release/health-gate.ts",
+    "release:promote": "bun run scripts/release/promote.ts",
+    "release:rollback": "bun run scripts/release/rollback.ts"
   },
   "packageManager": "bun@1.4.2",
   "overrides": {

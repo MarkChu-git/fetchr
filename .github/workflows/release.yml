@@ -6,16 +6,20 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
 
+# A rollout in progress must never be cancelled by a newer run.
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-production
   cancel-in-progress: false
 
 jobs:
   release:
     name: release
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    environment: production
     steps:
       - name: Enforce semver tags
         env:
@@ -30,7 +34,6 @@ jobs:
         with:
           persist-credentials: false
 
-      # A release publish is a poisoning target; never restore a cache here.
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
         with:
           bun-version: 1.4.2
@@ -39,23 +42,78 @@ jobs:
       - name: Install
         run: bun install --frozen-lockfile
 
-      - name: Lint
-        run: bun run lint
+      - name: Verify the source
+        run: bun run verify:fast
 
-      - name: Check boundaries
-        run: bun run check
+      - name: Build once
+        working-directory: apps/web
+        run: bunx cf build
 
-      - name: Typecheck
-        run: bun run typecheck
+      - name: Install scanners
+        run: |
+          bash scripts/ci/install-pinned-tools.sh "${{ runner.temp }}/ci-tools"
 
-      - name: Test
-        run: bun test
+      - name: Build metadata and package the artifact
+        working-directory: apps/web
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          ARTIFACT="fetchr-web-$TAG_NAME.tar.gz"
+          tar -czf "$ARTIFACT" -C .cloudflare/output .
+          DIGEST=$(sha256sum "$ARTIFACT" | cut -d' ' -f1)
+          printf '%s\n' "{\"tag\":\"$TAG_NAME\",\"commit\":\"$GITHUB_SHA\",\"repository\":\"$GITHUB_REPOSITORY\",\"bun\":\"$(bun --version)\",\"cf\":\"$(bunx cf --version 2>/dev/null | head -1)\",\"buildTimestamp\":\"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",\"artifactSha256\":\"$DIGEST\"}" > build-metadata.json
+          cat build-metadata.json
 
-      - name: Build the web app
-        run: bun run build
+      - name: SBOM
+        working-directory: apps/web
+        env:
+          TAG_NAME: ${{ github.ref_name }}
+        run: |
+          "${{ runner.temp }}/ci-tools/syft" dir:. --output spdx-json="sbom-$TAG_NAME.spdx.json"
+
+      - name: Attest the artifact
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: apps/web/fetchr-web-${{ github.ref_name }}.tar.gz
+
+      - name: Attest the SBOM
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4
+        with:
+          subject-path: apps/web/sbom-${{ github.ref_name }}.spdx.json
 
       - name: Publish the GitHub release
+        working-directory: apps/web
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ github.ref_name }}
-        run: gh release create "$TAG_NAME" --generate-notes --title "$TAG_NAME" --verify-tag
+        run: gh release create "$TAG_NAME" --generate-notes --title "$TAG_NAME" --verify-tag "fetchr-web-$TAG_NAME.tar.gz" "sbom-$TAG_NAME.spdx.json" build-metadata.json
+
+      - name: Upload the Worker version
+        id: upload
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          FETCHR_PROXY_SECRET: ${{ secrets.FETCHR_PROXY_SECRET }}
+        run: |
+          printf '{"FETCHR_PROXY_SECRET":"%s"}' "$FETCHR_PROXY_SECRET" > "$RUNNER_TEMP/secrets.json"
+          bunx cf workers versions create --prebuilt --secrets-file "$RUNNER_TEMP/secrets.json" --message "$TAG_NAME" | tee "$RUNNER_TEMP/cf-out.txt"
+          VERSION_ID=$(grep -oE '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}' "$RUNNER_TEMP/cf-out.txt" | head -1)
+          PREVIEW_URL=$(grep -oE 'https://[0-9a-f]{8}-[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev' "$RUNNER_TEMP/cf-out.txt" | head -1)
+          if [ -z "$VERSION_ID" ] || [ -z "$PREVIEW_URL" ]; then
+            echo "cf did not report a version id and preview URL"
+            exit 1
+          fi
+          echo "versionId=$VERSION_ID" >> "$GITHUB_OUTPUT"
+          echo "previewUrl=$PREVIEW_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Smoke the version URL
+        env:
+          RELEASE_BASE_URL: ${{ steps.upload.outputs.previewUrl }}
+        run: bun run release:health
+
+      - name: Staged rollout
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: bun run scripts/release/promote.ts --version "${{ steps.upload.outputs.versionId }}" --mode release

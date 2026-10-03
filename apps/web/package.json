@@ -3,12 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "exports": {
+    "./zip": "./src/zip.ts"
+  },
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
     "preview": "vite preview",
-    "preview:lhci": "bun scripts/preview-compressed.mjs",
-    "lhci": "lhci autorun",
     "doctor": "astryx doctor",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "deploy": "cf deploy"

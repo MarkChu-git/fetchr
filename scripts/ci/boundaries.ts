@@ -77,7 +77,7 @@ export function isShippedSource(relativePath: string): boolean {
 }
 
 function isWorkspacePackageDir(relativeDir: string): boolean {
-  return /^(?:apps|packages)\/[^/]+$/.test(relativeDir) || /^packages\/platform\/[^/]+$/.test(relativeDir)
+  return /^(?:apps|packages|bench)\/[^/]+$/.test(relativeDir) || /^packages\/platform\/[^/]+$/.test(relativeDir)
 }
 
 export function isForbiddenDependency(name: string): boolean {
@@ -153,7 +153,7 @@ export function lockfileViolations(present: readonly string[]): Violation[] {
 }
 
 export function typecheckProjectPaths(root: string): string[] {
-  const projects = new Set<string>(["scripts/ci/tsconfig.json"])
+  const projects = new Set<string>(["scripts/ci/tsconfig.json", "bench/tsconfig.json"])
   for (const file of walk(root)) {
     const rel = relativePosix(root, file)
     if (!rel.endsWith("/package.json")) continue

@@ -1,5 +1,6 @@
 import { expect, test } from "bun:test"
-import { deploymentVersionFrom, liveUrlFromPreview, requireSecret, versionUploadFrom, workersDevUrlFrom } from "./publish-worker.ts"
+import { requireSecret } from "./publish-worker.ts"
+import { deploymentVersionFrom, liveUrlFromPreview, versionUploadFrom, workersDevUrlFrom } from "../release/cf.ts"
 
 test("requireSecret rejects a missing or short value", () => {
   expect(() => requireSecret(undefined)).toThrow(/at least 16/)

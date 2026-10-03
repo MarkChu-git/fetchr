@@ -43,3 +43,18 @@ printf '%s  %s\n' \
   "ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108" \
   "$osv_path" | sha256sum --check --status
 chmod +x "$osv_path"
+
+# k6 nests its binary in a versioned directory.
+install_one \
+  "https://github.com/grafana/k6/releases/download/v2.3.0/k6-v2.3.0-linux-amd64.tar.gz" \
+  "39c3117b6af817592dcd0ce4242105c0a7af10948c2a425306f0be8f7a8a8ab1" \
+  "k6.tar.gz" \
+  "k6-v2.3.0-linux-amd64/k6"
+mv "${destination}/k6-v2.3.0-linux-amd64/k6" "${destination}/k6"
+rm -rf "${destination}/k6-v2.3.0-linux-amd64"
+
+install_one \
+  "https://github.com/anchore/syft/releases/download/v1.54.0/syft_1.54.0_linux_amd64.tar.gz" \
+  "54a87372498168b2d033e876fd41fa4e8035b872699e525a57046e1f2f09c860" \
+  "syft.tar.gz" \
+  "syft"

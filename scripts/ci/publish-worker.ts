@@ -6,9 +6,15 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
-
-export const workerName = "fetchr-web"
-const liveDomain = "https://fetchr.hanyang.app"
+import {
+  liveUrlFromPreview,
+  runCf,
+  servingVersion,
+  shiftTraffic,
+  versionUploadFrom,
+  workerName,
+  workersDevUrlFrom,
+} from "../release/cf.ts"
 
 export function requireSecret(secret: string | undefined): string {
   if (secret === undefined || secret.length < 16) {
@@ -17,50 +23,7 @@ export function requireSecret(secret: string | undefined): string {
   return secret
 }
 
-/** Preview hosts look like `<8 hex chars>-fetchr-web.<account>.workers.dev`. */
-export function liveUrlFromPreview(previewUrl: string): string {
-  let hostname: string
-  try {
-    const parsed = new URL(previewUrl)
-    if (parsed.protocol !== "https:") throw new Error("Version preview URL is missing.")
-    hostname = parsed.hostname
-  } catch (error) {
-    if (error instanceof Error && error.message === "Version preview URL is missing.") throw error
-    throw new Error("Version preview URL is missing.", { cause: error })
-  }
-  const match = /^([0-9a-f]{8})-(.+)$/i.exec(hostname)
-  const liveHost = match?.[2]
-  if (liveHost === undefined) throw new Error("Version preview URL has no version prefix.")
-  if (!liveHost.startsWith(`${workerName}.`) || !liveHost.endsWith(".workers.dev")) {
-    throw new Error("Version preview URL is not a workers.dev preview.")
-  }
-  return `https://${liveHost}`
-}
-
-const versionIdPattern = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i
-const previewUrlPattern = /https:\/\/[0-9a-f]{8}-[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev/i
-
-/** cf prints the new version as a UUID plus a workers.dev preview URL, in any panel shape. */
-export function versionUploadFrom(output: string): { readonly versionId: string; readonly previewUrl: string } {
-  const versionId = versionIdPattern.exec(output)?.[0] ?? ""
-  const previewUrl = previewUrlPattern.exec(output)?.[0] ?? ""
-  if (versionId.length === 0 || previewUrl.length === 0) {
-    throw new Error("Version upload did not return a version id and a preview URL.")
-  }
-  return { versionId, previewUrl }
-}
-
-export function workersDevUrlFrom(output: string): string {
-  const urls = output.match(/https:\/\/[a-z0-9-]+\.[a-z0-9.-]+\.workers\.dev/gi) ?? []
-  const preferred = urls.find((url) => url.includes(`${workerName}.`)) ?? urls[0]
-  if (preferred === undefined) {
-    // The custom domain is always attached to production traffic.
-    return liveDomain
-  }
-  return preferred.replace(/\/$/, "")
-}
-
-export async function smokeWorker(url: string): Promise<void> {
+async function smokeWorker(url: string): Promise<void> {
   const base = url.replace(/\/$/, "")
   await waitForHomepage(base)
   await waitForRejectedExtract(base)
@@ -118,77 +81,26 @@ async function publishExistingWorker(secretPath: string, message: string): Promi
   ])
   const uploaded = versionUploadFrom(uploadOutput)
   await smokeWorker(uploaded.previewUrl)
-  await runCf([
-    "workers",
-    "deployments",
-    "create",
-    "--worker",
-    workerName,
-    "--strategy",
-    "percentage",
-    "--versions",
-    JSON.stringify([{ version_id: uploaded.versionId, percentage: 100 }]),
-  ])
+  const previous = await servingVersion()
+  await shiftTraffic(uploaded.versionId, previous, 100)
   try {
     await smokeWorker(liveUrlFromPreview(uploaded.previewUrl))
   } catch (error) {
-    await rollback(error)
+    await rollback(error, previous)
   }
 }
 
 /** Roll back by deploying the previous version again. cf has no dedicated rollback command. */
-async function rollback(cause: unknown): Promise<never> {
+async function rollback(cause: unknown, previous?: string): Promise<never> {
   try {
-    const current = await currentDeploymentVersion()
-    if (current !== undefined) {
-      await runCf([
-        "workers",
-        "deployments",
-        "create",
-        "--worker",
-        workerName,
-        "--strategy",
-        "percentage",
-        "--versions",
-        JSON.stringify([{ version_id: current, percentage: 100 }]),
-        "--bypass-deployment-checks",
-      ])
-    }
+    const target = previous ?? (await servingVersion())
+    await shiftTraffic(target, target, 100, true)
   } catch (rollbackError) {
     const smokeText = cause instanceof Error ? cause.message : "Live smoke failed."
     const rollbackText = rollbackError instanceof Error ? rollbackError.message : "rollback failed"
     throw new Error(`${smokeText} Rollback also failed: ${rollbackText}`, { cause: rollbackError })
   }
   throw cause
-}
-
-/** Parse the version serving traffic from `cf workers deployments list` output. */
-export function deploymentVersionFrom(output: string): string | undefined {
-  // cf prints a text header before the JSON body, and the body is an object.
-  const start = output.indexOf("{")
-  if (start < 0) return undefined
-  try {
-    const parsed: unknown = JSON.parse(output.slice(start))
-    if (!isRecord(parsed)) return undefined
-    const deployments = parsed.deployments
-    if (!Array.isArray(deployments)) return undefined
-    const latest: unknown = deployments[0]
-    if (!isRecord(latest)) return undefined
-    const versions = latest.versions
-    if (!Array.isArray(versions)) return undefined
-    const first: unknown = versions[0]
-    if (!isRecord(first)) return undefined
-    const id = first.version_id
-    return typeof id === "string" && versionIdPattern.test(id) ? id : undefined
-  } catch {
-    return undefined
-  }
-}
-
-/** The version serving traffic right now, from the latest deployment. */
-async function currentDeploymentVersion(): Promise<string | undefined> {
-  const output = await runCf(["workers", "deployments", "list", "--worker", workerName])
-  return deploymentVersionFrom(output)
 }
 
 async function workerExists(accountId: string, token: string): Promise<boolean> {
@@ -203,23 +115,6 @@ async function workerExists(accountId: string, token: string): Promise<boolean> 
   if (response.status === 200) return true
   if (response.status === 404) return false
   throw new Error(`Worker lookup returned HTTP ${response.status}.`)
-}
-
-async function runCf(args: readonly string[]): Promise<string> {
-  const child = Bun.spawn(["bunx", "cf", ...args], {
-    stdin: "ignore",
-    stdout: "pipe",
-    stderr: "pipe",
-  })
-  const code = await child.exited
-  const stdout = await new Response(child.stdout).text()
-  const stderr = await new Response(child.stderr).text()
-  if (code !== 0) {
-    // The panel can carry the reason. Print stderr, never the secrets file path.
-    console.error(stderr)
-    throw new Error(`cf ${args.join(" ")} exited ${code}.`)
-  }
-  return `${stdout}\n${stderr}`
 }
 
 async function waitForHomepage(url: string): Promise<void> {

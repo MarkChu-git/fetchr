@@ -12,6 +12,26 @@ Five default roles; each label string equals its role name. See `docs/agents/tri
 
 Single-context: root `CONTEXT.md` plus `docs/adr/`. See `docs/agents/domain.md`.
 
+## Release rules
+
+Performance:
+- Do not introduce significant performance regressions. `bun run bench` gates blocking benchmarks at >10% regression; informational benchmarks only warn.
+- Run relevant benchmarks when changing hot paths (parsers, token signing, zip).
+- Do not weaken budgets in `performance/budgets.json` or `bench/baseline.json` merely to make CI pass. Update baselines with `--write` only when the new cost is intended.
+
+Compatibility:
+- This repo has no OpenAPI contract and no database. `bun run compat` reports both as skipped. When a real contract or schema appears, wire the real check instead of extending the skip.
+- If a database ever lands: migrations stay backwards-compatible with the previous production version; expand → migrate → contract; Worker rollback never rolls back database state.
+
+Generated code:
+- Never edit `apps/web/src/routeTree.gen.ts` by hand. Modify routes and regenerate with `bun run generate`. `bun run generate:check` runs in CI.
+
+Delivery:
+- Never bypass preview validation for user-facing changes.
+- Never skip health gates. Never change rollout stages in `scripts/release/config.ts` just to force a release through.
+- Tagged releases roll out 1% → 5% → 25% → 50% → 100% with a health gate between stages. Main pushes use the version-smoke-then-100% path in `publish-worker.ts`.
+- Emergency straight-to-100%: `bun run release:promote -- --version <id> --mode default`, and say why in the PR.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
