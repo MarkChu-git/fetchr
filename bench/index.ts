@@ -48,10 +48,13 @@ async function main() {
   const writePath = argAfter("--write")
   const baselinePathArg = argAfter("--baseline")
   const write = process.argv.includes("--write")
+  // --measure-only prints timings without any comparison. CI uses it when the
+  // PR base predates the bench harness and no same-runner baseline exists.
+  const measureOnly = process.argv.includes("--measure-only")
   const readFrom = baselinePathArg ?? baselinePath
   const writeTo = writePath ?? baselinePath
   let baseline: Baseline = {}
-  if (baselinePathArg !== undefined || !write) {
+  if (!measureOnly && (baselinePathArg !== undefined || !write)) {
     if (await Bun.file(readFrom).exists()) {
       const raw: unknown = JSON.parse(await Bun.file(readFrom).text())
       if (typeof raw === "object" && raw !== null) {

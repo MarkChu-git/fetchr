@@ -45,7 +45,7 @@ jobs:
           if [ -f "$RUNNER_TEMP/base-baseline.json" ]; then
             bun run bench -- --baseline "$RUNNER_TEMP/base-baseline.json"
           else
-            bun run bench
+            bun run bench -- --measure-only
           fi
 
       - name: Build the web app
