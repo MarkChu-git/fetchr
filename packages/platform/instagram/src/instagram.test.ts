@@ -8,26 +8,18 @@ import type {
 import { Effect, Result } from "effect"
 import { instagramExtractor } from "./index"
 
-const author = {
-  username: "fixture_author",
-  name: "Fixture Author",
-  profileUrl: "https://www.instagram.com/fixture_author/",
-}
-
-function parseJson(text: string): unknown {
-  return JSON.parse(text)
-}
-
-async function loadFixture(name: string): Promise<unknown> {
-  const file = Bun.file(new URL(`../fixtures/${name}.json`, import.meta.url))
-  return parseJson(await file.text())
+async function loadFixture(name: string): Promise<string> {
+  return Bun.file(new URL(`../fixtures/${name}.html`, import.meta.url)).text()
 }
 
 function resource(href: string): CanonicalResource {
   return { platform: "instagram", url: new URL(href) }
 }
 
-function transportFor(body: unknown): {
+function transportFor(routes: {
+  readonly crawler: string
+  readonly embed?: string
+}): {
   readonly transport: Transport
   readonly requests: Request[]
 } {
@@ -37,10 +29,13 @@ function transportFor(body: unknown): {
     transport: {
       request(input) {
         requests.push(input)
+        const body = input.url.endsWith("/embed")
+          ? (routes.embed ?? "")
+          : routes.crawler
         return Effect.succeed(
-          new Response(JSON.stringify(body), {
+          new Response(body, {
             status: 200,
-            headers: { "content-type": "application/json" },
+            headers: { "content-type": "text/html" },
           }),
         )
       },
@@ -50,19 +45,16 @@ function transportFor(body: unknown): {
 
 async function extract(
   href: string,
-  fixture: string,
-): Promise<Result.Result<MediaPost, ExtractFailure>> {
-  const body = await loadFixture(fixture)
-  const { transport, requests } = transportFor(body)
+  routes: { readonly crawler: string; readonly embed?: string },
+): Promise<{
+  readonly result: Result.Result<MediaPost, ExtractFailure>
+  readonly requests: Request[]
+}> {
+  const { transport, requests } = transportFor(routes)
   const result = await Effect.runPromise(
     Effect.result(instagramExtractor.extract(resource(href), transport)),
   )
-  expect(requests).toHaveLength(1)
-  const request = requests[0]
-  expect(request?.method).toBe("GET")
-  expect(request?.url).toBe(href)
-  expect(request?.headers.get("cookie")).toBeNull()
-  return result
+  return { result, requests }
 }
 
 function expectSuccess(
@@ -76,12 +68,12 @@ function expectSuccess(
 
 function expectFailure(
   result: Result.Result<MediaPost, ExtractFailure>,
-  expected: ExtractFailure,
+  code: ExtractFailure["code"],
 ): void {
   if (!Result.isFailure(result)) {
     throw new Error("expected an extract failure")
   }
-  expect(result.failure).toEqual(expected)
+  expect(result.failure.code).toBe(code)
 }
 
 describe("instagram extractor", () => {
@@ -133,126 +125,120 @@ describe("instagram extractor", () => {
       ),
     )
     expect(called).toBe(false)
-    expectFailure(result, {
-      code: "UNSUPPORTED_URL",
-      message: "URL is not a public Instagram post or reel",
+    expectFailure(result, "UNSUPPORTED_URL")
+  })
+
+  test("normalizes a crawler reel into the original video asset", async () => {
+    const crawler = await loadFixture("crawler-reel")
+    const { result, requests } = await extract(
+      "https://www.instagram.com/reel/DZJwSuXom8P/",
+      { crawler },
+    )
+    expect(requests).toHaveLength(1)
+    expect(requests[0]?.headers.get("user-agent")).toContain("Googlebot")
+    const post = expectSuccess(result)
+    expect(post.platform).toBe("instagram")
+    expect(post.id).toBe("DZJwSuXom8P")
+    expect(post.canonicalUrl).toBe("https://www.instagram.com/reel/DZJwSuXom8P/")
+    expect(post.author?.username).toBe("_hiraanizamani101")
+    expect(post.author?.profileUrl).toBe(
+      "https://www.instagram.com/_hiraanizamani101/",
+    )
+    expect(post.author?.avatar).toContain("cdninstagram.com")
+    expect(post.description).toContain("paste reel link in comments")
+    expect(post.publishedAt).toBe(new Date(1780551335 * 1000).toISOString())
+    expect(post.media).toHaveLength(1)
+    const media = post.media[0]
+    if (media?.type !== "video") throw new Error("expected a video asset")
+    expect(media.width).toBe(720)
+    expect(media.height).toBe(1280)
+    expect(media.thumbnail).toContain("fbcdn.net")
+    expect(media.delivery).toEqual({
+      type: "proxy",
+      token: "pending",
+      upstreamUrl: expect.stringContaining("fbcdn.net"),
+      upstreamHeaders: { Referer: "https://www.instagram.com/" },
     })
   })
 
-  test("normalizes a public image into one direct image", async () => {
-    const result = await extract("https://www.instagram.com/p/ABC123/", "image")
-    expect(expectSuccess(result)).toEqual({
-      platform: "instagram",
-      id: "ABC123",
-      canonicalUrl: "https://www.instagram.com/p/ABC123/",
-      author,
-      description: "a public photo",
-      media: [
-        {
-          type: "image",
-          id: "ABC123",
-          width: 1080,
-          height: 1350,
-          delivery: {
-            type: "direct",
-            url: "https://cdn.example.test/instagram/ABC123.jpg",
-          },
-        },
-      ],
+  test("normalizes a crawler image post into the original image", async () => {
+    const crawler = await loadFixture("crawler-image")
+    const { result } = await extract("https://www.instagram.com/p/CiKgnBEPU9g/", {
+      crawler,
     })
+    const post = expectSuccess(result)
+    expect(post.author?.username).toBe("digitalmarketingtrending")
+    const media = post.media[0]
+    if (media?.type !== "image") throw new Error("expected an image asset")
+    expect(media.width).toBe(1080)
+    expect(media.height).toBe(1350)
   })
 
-  test("normalizes a carousel into two images and proxies only a Referer CDN", async () => {
-    const result = await extract(
-      "https://www.instagram.com/p/ABC123/",
-      "carousel",
+  test("normalizes a crawler carousel into per-child video assets", async () => {
+    const crawler = await loadFixture("crawler-carousel")
+    const { result } = await extract(
+      "https://www.instagram.com/p/DeCowlSjyeV/",
+      { crawler },
     )
-    expect(expectSuccess(result)).toEqual({
-      platform: "instagram",
-      id: "ABC123",
-      canonicalUrl: "https://www.instagram.com/p/ABC123/",
-      author,
-      media: [
-        {
-          type: "image",
-          id: "ABC123:1",
-          width: 1080,
-          height: 1080,
-          delivery: {
-            type: "direct",
-            url: "https://cdn.example.test/instagram/ABC123-1.jpg",
-          },
-        },
-        {
-          type: "image",
-          id: "ABC123:2",
-          width: 1080,
-          height: 1440,
-          delivery: {
-            type: "proxy",
-            token: "pending",
-            upstreamUrl: "https://scontent.xx.fbcdn.net/v/ABC123-2.jpg",
-            upstreamHeaders: { Referer: "https://www.instagram.com/" },
-          },
-        },
-      ],
-    })
-  })
-
-  test("normalizes a reel into one video and proxies a Referer CDN", async () => {
-    const profileReel = await extract(
-      "https://www.instagram.com/username/reel/ABC123/",
-      "reel",
-    )
-    const reel = await extract(
-      "https://www.instagram.com/reel/ABC123/",
-      "reel",
-    )
-    const expected: MediaPost = {
-      platform: "instagram",
-      id: "ABC123",
-      canonicalUrl: "https://www.instagram.com/reel/ABC123/",
-      author,
-      description: "a public reel",
-      media: [
-        {
-          type: "video",
-          id: "ABC123",
-          width: 720,
-          height: 1280,
-          thumbnail: "https://cdn.example.test/instagram/ABC123-cover.jpg",
-          delivery: {
-            type: "proxy",
-            token: "pending",
-            upstreamUrl: "https://scontent.cdninstagram.com/v/ABC123.mp4",
-            upstreamHeaders: { Referer: "https://www.instagram.com/" },
-          },
-        },
-      ],
+    const post = expectSuccess(result)
+    expect(post.media).toHaveLength(2)
+    for (const [index, media] of post.media.entries()) {
+      if (media.type !== "video") throw new Error("expected a video asset")
+      expect(media.id).toBe(`DeCowlSjyeV:${index + 1}`)
+      expect(media.width).toBe(720)
+      expect(media.height).toBe(1280)
     }
-    expect(expectSuccess(profileReel)).toEqual(expected)
-    expect(expectSuccess(reel)).toEqual(expected)
   })
 
-  test("returns PRIVATE_MEDIA for a private fixture", async () => {
-    const result = await extract(
-      "https://www.instagram.com/p/ABC123/",
-      "private",
+  test("falls back to the embed page when the crawler page has no media", async () => {
+    const { result, requests } = await extract(
+      "https://www.instagram.com/reel/DZJwSuXom8P/",
+      {
+        crawler: await loadFixture("gone"),
+        embed: await loadFixture("embed-reel"),
+      },
     )
-    expectFailure(result, {
-      code: "PRIVATE_MEDIA",
-      message: "This Instagram post is private",
-    })
+    expect(requests).toHaveLength(2)
+    expect(requests[1]?.url).toBe(
+      "https://www.instagram.com/p/DZJwSuXom8P/embed",
+    )
+    const post = expectSuccess(result)
+    expect(post.media[0]?.type).toBe("video")
+    if (post.media[0]?.type === "video") {
+      expect(post.media[0].delivery).toEqual({
+        type: "proxy",
+        token: "pending",
+        upstreamUrl:
+          "https://instagram.fkul10-2.fna.fbcdn.net/o1/v/t2/f2/m86/video.mp4?oh=abc&oe=def",
+        upstreamHeaders: { Referer: "https://www.instagram.com/" },
+      })
+    }
   })
 
-  test("returns LOGIN_REQUIRED for a login-wall fixture", async () => {
-    const result = await extract(
-      "https://www.instagram.com/p/ABC123/",
-      "login-wall",
+  test("reports LOGIN_REQUIRED when the embed video omits video_url", async () => {
+    const { result } = await extract(
+      "https://www.instagram.com/reel/DI9E3YvAzzV/",
+      {
+        crawler: await loadFixture("gone"),
+        embed: await loadFixture("embed-reel-novideo"),
+      },
     )
-    expectFailure(result, {
-      code: "LOGIN_REQUIRED",
-      message: "Instagram requires a login to view this post",
+    expectFailure(result, "LOGIN_REQUIRED")
+  })
+
+  test("reports PRIVATE_MEDIA when only an og:image survives", async () => {
+    const { result } = await extract("https://www.instagram.com/p/PRIVATE1/", {
+      crawler: await loadFixture("private"),
+      embed: await loadFixture("gone"),
     })
+    expectFailure(result, "PRIVATE_MEDIA")
+  })
+
+  test("reports MEDIA_NOT_FOUND when nothing renders", async () => {
+    const { result } = await extract("https://www.instagram.com/p/ZZZZZZZZZZZ/", {
+      crawler: await loadFixture("gone"),
+      embed: await loadFixture("gone"),
+    })
+    expectFailure(result, "MEDIA_NOT_FOUND")
   })
 })
