@@ -8,3 +8,9 @@ reason = "extract-zip has no fixed release; only extracts Google's official Chro
 [[IgnoredVulns]]
 id = "GHSA-7pqw-9j4j-h8q3"
 reason = "extract-zip has no fixed release; only extracts Google's official Chrome archives in CI tooling"
+
+# braces (via fast-glob/micromatch in dev tooling) has no fixed release.
+# It parses our own build globs, never adversarial input.
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+reason = "braces has no fixed release; only parses our own glob patterns in dev tooling"
