@@ -89,7 +89,9 @@ export function deploymentVersionFrom(output: string): string | undefined {
 export async function servingVersion(): Promise<string> {
   const output = await runCf(["workers", "deployments", "list", "--worker", workerName])
   const id = deploymentVersionFrom(output)
-  if (id === undefined) throw new Error("current deployment has no version")
+  if (id === undefined) {
+    throw new Error(`current deployment has no version; cf said: ${output.slice(0, 400)}`)
+  }
   return id
 }
 
