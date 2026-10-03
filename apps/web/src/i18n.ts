@@ -33,6 +33,7 @@ export interface PageCopy {
   readonly saveToAlbum: string
   readonly qualityOriginal: string
   readonly packaging: string
+  downloadOriginal(kind: "video" | "image"): string
   readonly combine: string
   readonly fileUnreadable: string
   readonly combineUnreadable: string
@@ -84,6 +85,7 @@ const copy = {
     saveToAlbum: "保存到相册",
     qualityOriginal: "原画",
     packaging: "正在打包",
+    downloadOriginal: (kind) => (kind === "video" ? "下载原画" : "下载原图"),
     combine: "合成并下载",
     fileUnreadable: "浏览器读不到这个文件",
     combineUnreadable: "浏览器读不到这两路字节，无法合成",
@@ -109,6 +111,7 @@ const copy = {
     saveToAlbum: "Save to Photos",
     qualityOriginal: "Original",
     packaging: "Preparing the zip",
+    downloadOriginal: (kind) => (kind === "video" ? "Download original video" : "Download original photo"),
     combine: "Combine and download",
     fileUnreadable: "The browser could not read this file",
     combineUnreadable: "The browser could not read the picture and audio, so they cannot be combined",

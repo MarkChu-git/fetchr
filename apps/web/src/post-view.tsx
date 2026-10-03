@@ -235,23 +235,29 @@ async function saveHref(href: string): Promise<boolean> {
 
 /** The original's size is not in the feed. One range request reads it exactly. */
 function useRemoteBytes(href: string | undefined): number | undefined {
-  const [bytes, setBytes] = useState<number | undefined>()
+  const [probe, setProbe] = useState<{ href: string; bytes: number } | undefined>()
   useEffect(() => {
+    if (href === undefined) return undefined
     let cancelled = false
-    if (href !== undefined) {
-      fetch(href, { headers: { range: "bytes=0-0" } })
-        .then((response) => {
-          const range = response.headers.get("content-range")
-          const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
-          if (!cancelled && Number.isFinite(total) && total > 0) setBytes(total)
-        })
-        .catch(() => undefined)
-    }
+    const controller = new AbortController()
+    fetch(href, { headers: { range: "bytes=0-0" }, signal: controller.signal })
+      .then((response) => {
+        // Anything but 206 means the server ignored Range and is streaming the
+        // whole file. Stop reading; only a partial answer carries a trustworthy total.
+        controller.abort()
+        if (!response.ok) return
+        const range = response.headers.get("content-range")
+        if (response.status !== 206 || range === null) return
+        const total = Number(range.split("/")[1])
+        if (!cancelled && Number.isFinite(total) && total > 0) setProbe({ href, bytes: total })
+      })
+      .catch(() => undefined)
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [href])
-  return bytes
+  return probe !== undefined && probe.href === href ? probe.bytes : undefined
 }
 
 function DownloadLink({
@@ -527,26 +533,37 @@ export function PostView({
             </HStack>
             {title !== undefined ? <Heading level={2}>{title}</Heading> : null}
             {primaryAsset !== undefined && primaryHref !== undefined ? (
-              <DownloadMenu
-                targets={[
-                  {
-                    href: primaryHref,
-                    name: primaryAsset.id,
-                    label: text.qualityOriginal,
-                    ...(originalDetail === undefined ? {} : { detail: originalDetail }),
-                  },
-                  ...qualityVariants.map((item) => {
-                    const target: DownloadTarget = {
-                      href: item.href,
-                      name: `${primaryAsset.id}-${item.cls}`,
-                      label: item.cls,
-                    }
-                    if (item.bytes === undefined) return target
-                    return Object.assign(target, { detail: `~${formatSize(item.bytes)}` })
-                  }),
-                ]}
-                text={text}
-              />
+              qualityVariants.length > 0 ? (
+                <DownloadMenu
+                  targets={[
+                    {
+                      href: primaryHref,
+                      label: text.qualityOriginal,
+                      ...(originalDetail === undefined ? {} : { detail: originalDetail }),
+                    },
+                    ...qualityVariants.map((item) => {
+                      const target: DownloadTarget = {
+                        href: item.href,
+                        label: item.cls,
+                      }
+                      if (item.bytes === undefined) return target
+                      return Object.assign(target, { detail: `~${formatSize(item.bytes)}` })
+                    }),
+                  ]}
+                  text={text}
+                />
+              ) : (
+                <DownloadLink
+                  href={primaryHref}
+                  text={text}
+                  label={
+                    originalDetail === undefined
+                      ? text.downloadOriginal(primaryAsset.type === "image" ? "image" : "video")
+                      : `${text.downloadOriginal(primaryAsset.type === "image" ? "image" : "video")} · ${originalDetail}`
+                  }
+                  fill
+                />
+              )
             ) : primaryAsset !== undefined ? (
               <PrimaryAction asset={primaryAsset} text={text} />
             ) : null}
@@ -714,6 +731,7 @@ function ShareToAlbum({
 
   useEffect(() => {
     let cancelled = false
+    const controller = new AbortController()
     async function probe() {
       if (typeof navigator === "undefined" || typeof navigator.canShare !== "function") return
       const probeFile = new File([new Uint8Array([0x89, 0x50, 0x4e, 0x47])], "probe.png", {
@@ -722,10 +740,15 @@ function ShareToAlbum({
       if (!navigator.canShare({ files: [probeFile] })) return
       try {
         // A one-byte range read answers the total size without pulling the file.
-        const response = await fetch(href, { headers: { range: "bytes=0-0" } })
+        const response = await fetch(href, { headers: { range: "bytes=0-0" }, signal: controller.signal })
+        // Only a 206 carries a trustworthy total. Anything else streams the whole file; stop it.
+        controller.abort()
+        if (!response.ok) return
         const range = response.headers.get("content-range")
-        const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
-        if (Number.isFinite(total) && total > shareSizeLimit) return
+        if (response.status !== 206 || range === null) return
+        const total = Number(range.split("/")[1])
+        if (!Number.isFinite(total)) return
+        if (total > shareSizeLimit) return
         if (!cancelled) setReady(true)
       } catch {
         // Unreadable now means unreadable later. Stay hidden.
@@ -734,6 +757,7 @@ function ShareToAlbum({
     void probe()
     return () => {
       cancelled = true
+      controller.abort()
     }
   }, [href])
 
@@ -827,10 +851,15 @@ function ShareMenu({
       for (const target of targets) {
         if (target.bytes !== undefined) continue
         const probe = target
-        void fetch(probe.href, { headers: { range: "bytes=0-0" } })
+        const controller = new AbortController()
+        void fetch(probe.href, { headers: { range: "bytes=0-0" }, signal: controller.signal })
           .then((response) => {
+            // Only a 206 carries a trustworthy total. Anything else streams the whole file; stop it.
+            controller.abort()
+            if (!response.ok) return
             const range = response.headers.get("content-range")
-            const total = range !== null ? Number(range.split("/")[1]) : Number(response.headers.get("content-length"))
+            if (response.status !== 206 || range === null) return
+            const total = Number(range.split("/")[1])
             if (!cancelled && Number.isFinite(total) && total > 0) {
               setProbed((current) => ({ ...current, [probe.href]: total }))
             }
@@ -874,7 +903,6 @@ function ShareMenu({
 
 interface DownloadTarget {
   readonly href: string
-  readonly name: string
   readonly label: string
   readonly detail?: string
 }
