@@ -97,6 +97,8 @@ export interface VideoAsset extends AssetBase {
   readonly codec?: string
   readonly container?: string
   readonly bitrate?: number
+  /** Estimated file size, when the platform reports bitrate and duration. */
+  readonly bytes?: number
   readonly thumbnail?: string
 }
 

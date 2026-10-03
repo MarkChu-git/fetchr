@@ -184,9 +184,6 @@ export function HomePage() {
       <div {...stylex.props(styles.column)}>
         <Card padding={5}>
           <VStack gap={4}>
-            <Text type="supporting" color="secondary">
-              {text.intro}
-            </Text>
             <form {...stylex.props(styles.form)} data-fetchr-paste="" onSubmit={onSubmit}>
               <div {...stylex.props(styles.field)}>
                 <TextInput
@@ -259,7 +256,10 @@ export function HomePage() {
             />
           </Card>
         ) : null}
-        {status.state === "ready" ? <PostView post={status.post} locale={lang} /> : null}
+        {/* A new post must not inherit the previous post's probed sizes. */}
+        {status.state === "ready" ? (
+          <PostView key={`${status.post.platform}:${status.post.id}`} post={status.post} locale={lang} />
+        ) : null}
       </div>
     </AppShell>
   )

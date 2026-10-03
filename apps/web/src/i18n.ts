@@ -22,7 +22,6 @@ export function htmlLang(locale: Locale): "zh-CN" | "en" {
 
 export interface PageCopy {
   readonly publicLink: string
-  readonly intro: string
   readonly description: string
   readonly pasteLabel: string
   readonly submit: string
@@ -31,10 +30,10 @@ export interface PageCopy {
   readonly emptyDescription: string
   readonly download: string
   readonly downloadAll: string
-  readonly downloadHd: string
-  readonly downloadSd: string
   readonly saveToAlbum: string
+  readonly qualityOriginal: string
   readonly packaging: string
+  downloadOriginal(kind: "video" | "image"): string
   readonly combine: string
   readonly fileUnreadable: string
   readonly combineUnreadable: string
@@ -75,7 +74,6 @@ const enPlatform = {
 const copy = {
   zh: {
     publicLink: "公开链接",
-    intro: "贴一条公开分享链接，先在这里看，再保存。",
     description: "粘贴链接，解析并下载社交媒体上的视频、图片和音频。",
     pasteLabel: "粘贴链接",
     submit: "解析",
@@ -83,11 +81,11 @@ const copy = {
     emptyTitle: "还没有内容",
     emptyDescription: "解析之后，视频会出现在这里。",
     download: "下载",
-    downloadAll: "全部下载",
-    downloadHd: "高清 720p",
-    downloadSd: "省流 540p",
+    downloadAll: "全部下载(原画 zip)",
     saveToAlbum: "保存到相册",
+    qualityOriginal: "原画",
     packaging: "正在打包",
+    downloadOriginal: (kind) => (kind === "video" ? "下载原画" : "下载原图"),
     combine: "合成并下载",
     fileUnreadable: "浏览器读不到这个文件",
     combineUnreadable: "浏览器读不到这两路字节，无法合成",
@@ -102,7 +100,6 @@ const copy = {
   },
   en: {
     publicLink: "Public link",
-    intro: "Paste a public share link. Watch it here, then save it.",
     description: "Paste a link to extract and download videos, images, and audio from social media.",
     pasteLabel: "Paste link",
     submit: "Extract",
@@ -110,11 +107,11 @@ const copy = {
     emptyTitle: "Nothing here yet",
     emptyDescription: "After you extract a link, the video shows up here.",
     download: "Download",
-    downloadAll: "Download all",
-    downloadHd: "HD 720p",
-    downloadSd: "SD 540p",
+    downloadAll: "Download all (original, zip)",
     saveToAlbum: "Save to Photos",
+    qualityOriginal: "Original",
     packaging: "Preparing the zip",
+    downloadOriginal: (kind) => (kind === "video" ? "Download original video" : "Download original photo"),
     combine: "Combine and download",
     fileUnreadable: "The browser could not read this file",
     combineUnreadable: "The browser could not read the picture and audio, so they cannot be combined",
