@@ -1,1 +1,1 @@
-https://www.xiaohongshu.com/explore/abc123
+https://www.xiaohongshu.com/discovery/item/abc123?xsec_token=fixture-token&xsec_source=app_share&type=video&author_share=1

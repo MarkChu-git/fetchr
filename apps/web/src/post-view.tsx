@@ -149,13 +149,13 @@ function isBrowserFallback(asset: MediaAsset): boolean {
   return asset.type === "video" && asset.id.endsWith(":browser")
 }
 
-// Douyin's own renditions ride along as :720p / :540p assets. They get labeled
-// download buttons in the side card, not their own stage entries.
-function qualityClass(asset: MediaAsset): "720p" | "540p" | undefined {
+// Platform renditions ride along as :NNNp assets (douyin :720p/:540p,
+// xiaohongshu transcodes labeled by short edge). They get labeled download
+// buttons in the side card, not their own stage entries.
+function qualityClass(asset: MediaAsset): string | undefined {
   if (asset.type !== "video") return undefined
-  if (asset.id.endsWith(":720p")) return "720p"
-  if (asset.id.endsWith(":540p")) return "540p"
-  return undefined
+  const match = /:(\d{3,4})p$/.exec(asset.id)
+  return match?.[1] === undefined ? undefined : `${match[1]}p`
 }
 
 function PreviewVideo({
