@@ -7,32 +7,91 @@
   <body>
     <script>
       window.__INITIAL_STATE__ = {
-        "currentNoteId": "abc123",
-        "noteDetailMap": {
-          "abc123": {
-            "note": {
+        "global": {"firstVisitUrl": undefined},
+        "noteData": {
+          "routeQuery": {},
+          "data": {
+            "noteData": {
               "noteId": "abc123",
+              "type": "video",
               "title": "fixture-video-title",
               "desc": "fixture-video-description",
               "private": false,
               "user": {
-                "nickname": "fixture-video-author"
+                "userId": "fixture-user-id",
+                "nickName": "fixture-video-author",
+                "avatar": "https://cdn.fixture.example/avatar.jpg"
               },
+              "interactInfo": {"likedCount": "10"},
               "imageList": [
                 {
                   "url": "https://cdn.fixture.example/video-cover.jpg",
+                  "infoList": [
+                    {"imageScene": "H5_DTL", "url": "https://cdn.fixture.example/video-cover.jpg"}
+                  ],
                   "width": 720,
-                  "height": 1280,
-                  "requiresReferer": false
+                  "height": 1280
                 }
               ],
               "video": {
-                "url": "https://cdn.fixture.example/video.mp4",
-                "width": 720,
-                "height": 1280,
-                "requiresReferer": true
+                "consumer": {"originVideoKey": "pre_post/fixture-origin-key"},
+                "mediaV2": "{\"video\":{\"width\":1080,\"height\":2400,\"duration\":12}}",
+                "media": {
+                  "video": {"bizId": "1", "duration": 12, "drmType": 0},
+                  "stream": {
+                    "h265": [
+                      {
+                        "format": "mp4",
+                        "width": 720,
+                        "height": 1280,
+                        "audioCodec": "aac",
+                        "videoCodec": "h265",
+                        "streamDesc": "X265_MP4_WEB_520_h5",
+                        "streamType": 520,
+                        "masterUrl": "https://cdn.fixture.example/video-hevc.mp4?sign=fixture",
+                        "videoDuration": 12000,
+                        "size": 849017,
+                        "qualityType": "HD"
+                      }
+                    ],
+                    "h264": [
+                      {
+                        "format": "mp4",
+                        "defaultStream": 1,
+                        "width": 720,
+                        "height": 1280,
+                        "audioCodec": "aac",
+                        "videoCodec": "h264",
+                        "streamDesc": "MINI_APP_259",
+                        "streamType": 259,
+                        "masterUrl": "https://cdn.fixture.example/video.mp4?sign=fixture",
+                        "backupUrls": ["https://cdn-bak.fixture.example/video.mp4?sign=fixture"],
+                        "videoDuration": 12000,
+                        "size": 705757,
+                        "qualityType": "HD"
+                      }
+                    ],
+                    "av1": [
+                      {
+                        "format": "fmp4",
+                        "width": 720,
+                        "height": 1280,
+                        "videoCodec": "av1",
+                        "masterUrl": "https://cdn.fixture.example/video-av1.m4s?sign=fixture"
+                      }
+                    ]
+                  }
+                },
+                "capa": {"duration": 12}
               }
             }
+          },
+          "normalNotePreloadData": {
+            "imagesList": [
+              {"url": "https://cdn-na.fixture.example/frame.jpg", "urlSizeLarge": "https://cdn-na.fixture.example/frame-large.jpg"}
+            ],
+            "title": "fixture-video-title",
+            "desc": "fixture-video-description"
           }
         }
       };

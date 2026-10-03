@@ -5,3 +5,9 @@ FETCHR_PROXY_SECRET=
 
 # Optional Turnstile secret. Leave empty to refuse requests over the rate limit.
 TURNSTILE_SECRET=
+
+# Optional Xiaohongshu escape hatch. Shared notes are served anonymously via
+# the mobile share render, so this stays empty in normal operation. If that
+# path ever closes, a signed-in web_session cookie restores access:
+#   XHS_COOKIE=web_session=<value>
+XHS_COOKIE=

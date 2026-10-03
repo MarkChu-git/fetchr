@@ -7,32 +7,47 @@
   <body>
     <script>
       window.__INITIAL_STATE__ = {
-        "currentNoteId": "image123",
-        "noteDetailMap": {
-          "image123": {
-            "note": {
+        "noteData": {
+          "data": {
+            "noteData": {
               "noteId": "image123",
+              "type": "normal",
               "title": "fixture-image-title",
               "desc": "fixture-image-description",
               "private": false,
               "user": {
-                "nickname": "fixture-image-author"
+                "userId": "fixture-image-user-id",
+                "nickName": "fixture-image-author",
+                "avatar": "https://cdn.fixture.example/avatar-image.jpg"
               },
               "imageList": [
                 {
-                  "url": "https://cdn.fixture.example/image-1.jpg",
+                  "fileId": "spectrum/fixture-image-1",
+                  "url": "https://cdn.fixture.example/image-1.jpg!h5_1080jpg",
                   "width": 1080,
                   "height": 1440,
-                  "requiresReferer": false
+                  "infoList": [
+                    {"imageScene": "H5_PRV", "url": "https://cdn.fixture.example/image-1-pre.jpg"},
+                    {"imageScene": "H5_DTL", "url": "https://cdn.fixture.example/image-1.jpg!h5_1080jpg"}
+                  ]
                 },
                 {
-                  "url": "https://cdn.fixture.example/image-2.jpg",
+                  "url": "",
                   "width": 1080,
                   "height": 1440,
-                  "requiresReferer": true
+                  "infoList": [
+                    {"imageScene": "H5_DTL", "url": "https://cdn.fixture.example/image-2.jpg!h5_1080jpg"}
+                  ]
                 }
               ]
             }
+          },
+          "normalNotePreloadData": {
+            "imagesList": [
+              {"url": "https://cdn-na.fixture.example/image-1.jpg"}
+            ],
+            "title": "fixture-image-title",
+            "desc": "fixture-image-description"
           }
         }
       };

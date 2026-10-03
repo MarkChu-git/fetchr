@@ -12,7 +12,10 @@ import { instagramExtractor } from "@fetchr/platform-instagram"
 import { kuaishou } from "@fetchr/platform-kuaishou"
 import { tiktokExtractor } from "@fetchr/platform-tiktok"
 import { twitterExtractor } from "@fetchr/platform-twitter"
-import { xiaohongshuExtractor } from "@fetchr/platform-xiaohongshu"
+import {
+  createXiaohongshuExtractor,
+  sessionFromCookieHeader,
+} from "@fetchr/platform-xiaohongshu"
 import { youtubeExtractor } from "@fetchr/platform-youtube"
 import { Effect } from "effect"
 import { pageCopy, type Locale } from "../i18n"
@@ -39,7 +42,9 @@ export function proxySecret(): string {
 const productExtractors = [
   fixtureExtractor,
   youtubeExtractor,
-  xiaohongshuExtractor,
+  // The anonymous mobile share render serves notes without login; XHS_COOKIE
+  // only exists as an escape hatch if that path ever closes.
+  createXiaohongshuExtractor(sessionFromCookieHeader(process.env.XHS_COOKIE)),
   douyinExtractor,
   instagramExtractor,
   tiktokExtractor,
