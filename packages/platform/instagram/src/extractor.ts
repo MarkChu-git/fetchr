@@ -66,7 +66,7 @@ function unescapeEntities(text: string): string {
 
 function scriptJsonPayloads(html: string): readonly unknown[] {
   const out: unknown[] = []
-  const re = /<script[^>]*>([\s\S]*?)<\/script>/g
+  const re = /<script[^>]*>([\s\S]*?)<\/script>/gi
   let m: RegExpExecArray | null
   while ((m = re.exec(html)) !== null) {
     const body = m[1]

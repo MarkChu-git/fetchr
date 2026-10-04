@@ -313,7 +313,7 @@ describe("instagram extractor", () => {
     // A page that first exposes another post's media, then ours.
     const merged = other.replace(
       "</body></html>",
-      reel.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[0] ?? "",
+      reel.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[0] ?? "",
     )
     const { result } = await extract(
       "https://www.instagram.com/reel/DZJwSuXom8P/",
