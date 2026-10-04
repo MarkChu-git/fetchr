@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as ApiExtractRouteImport } from './routes/api/extract'
 import { Route as DownloadTokenRouteImport } from './routes/download/$token'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiExtractRoute = ApiExtractRouteImport.update({
@@ -31,30 +37,34 @@ const DownloadTokenRoute = DownloadTokenRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/terms': typeof TermsRoute
   '/api/extract': typeof ApiExtractRoute
   '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/terms': typeof TermsRoute
   '/api/extract': typeof ApiExtractRoute
   '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/terms': typeof TermsRoute
   '/api/extract': typeof ApiExtractRoute
   '/download/$token': typeof DownloadTokenRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/extract' | '/download/$token'
+  fullPaths: '/' | '/terms' | '/api/extract' | '/download/$token'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/extract' | '/download/$token'
-  id: '__root__' | '/' | '/api/extract' | '/download/$token'
+  to: '/' | '/terms' | '/api/extract' | '/download/$token'
+  id: '__root__' | '/' | '/terms' | '/api/extract' | '/download/$token'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  TermsRoute: typeof TermsRoute
   ApiExtractRoute: typeof ApiExtractRoute
   DownloadTokenRoute: typeof DownloadTokenRoute
 }
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/extract': {
@@ -87,6 +104,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  TermsRoute: TermsRoute,
   ApiExtractRoute: ApiExtractRoute,
   DownloadTokenRoute: DownloadTokenRoute,
 }
