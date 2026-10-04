@@ -64,25 +64,74 @@ function unescapeEntities(text: string): string {
   return out
 }
 
+function indexOfIgnoreCase(
+  source: string,
+  needle: string,
+  from: number,
+): number {
+  const lower = source.toLowerCase()
+  return lower.indexOf(needle.toLowerCase(), from)
+}
+
+function lastIndexOfIgnoreCase(
+  source: string,
+  needle: string,
+  before: number,
+): number {
+  const lower = source.toLowerCase()
+  return lower.lastIndexOf(needle.toLowerCase(), before)
+}
+
+function isHtmlSpace(char: string | undefined): boolean {
+  return (
+    char === " " || char === "\t" || char === "\n" || char === "\r" ||
+    char === "\f"
+  )
+}
+
+function indexOfScriptClose(source: string, from: number): number {
+  const needle = "</script"
+  for (
+    let index = indexOfIgnoreCase(source, needle, from);
+    index >= 0;
+    index = indexOfIgnoreCase(source, needle, index + 1)
+  ) {
+    let cursor = index + needle.length
+    while (isHtmlSpace(source[cursor])) cursor += 1
+    const next = source[cursor]
+    if (next === ">" || next === "/" || next === undefined) return index
+  }
+  return -1
+}
+
 function scriptJsonPayloads(html: string): readonly unknown[] {
   const out: unknown[] = []
-  const re = /<script[^>]*>([\s\S]*?)<\/script>/gi
-  let m: RegExpExecArray | null
-  while ((m = re.exec(html)) !== null) {
-    const body = m[1]
-    if (body === undefined || !body.includes("xig_polaris_media")) continue
-    try {
-      out.push(JSON.parse(body))
-    } catch {
-      // Server-rendered payloads are often entity-encoded; retry decoded.
+  const needle = "xig_polaris_media"
+  let cursor = 0
+  let lastTagAt = -1
+  for (;;) {
+    const at = html.indexOf(needle, cursor)
+    if (at < 0) return out
+    cursor = at + needle.length
+    const tagAt = lastIndexOfIgnoreCase(html, "<script", at)
+    if (tagAt < 0 || tagAt === lastTagAt) continue
+    lastTagAt = tagAt
+    const tagEnd = html.indexOf(">", tagAt)
+    if (tagEnd < 0 || tagEnd >= at) continue
+    const closeAt = indexOfScriptClose(html, tagEnd + 1)
+    const body = html.slice(
+      tagEnd + 1,
+      closeAt < 0 ? html.length : closeAt,
+    )
+    for (const candidate of [body, unescapeEntities(body)]) {
       try {
-        out.push(JSON.parse(unescapeEntities(body)))
+        out.push(JSON.parse(candidate))
+        break
       } catch {
-        // Not every matching script is the JSON payload; keep looking.
+        // Server-rendered payloads may be entity-encoded; try the next form.
       }
     }
   }
-  return out
 }
 
 type CrawlerHit =
@@ -93,26 +142,19 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value)
 }
 
-function findPolarisMedia(node: unknown): CrawlerHit | undefined {
+function collectPolarisMedia(node: unknown, hits: CrawlerHit[]): void {
   if (Array.isArray(node)) {
-    for (const item of node) {
-      const hit = findPolarisMedia(item)
-      if (hit !== undefined) return hit
-    }
-    return undefined
+    for (const item of node) collectPolarisMedia(item, hits)
+    return
   }
-  if (!isRecord(node)) return undefined
+  if (!isRecord(node)) return
   const polaris = node["xig_polaris_media"]
   if (isRecord(polaris)) {
     const media = polaris["if_not_gated_logged_out"]
-    if (isRecord(media)) return { kind: "media", media }
-    if ("if_gated_logged_out" in polaris) return { kind: "gated" }
+    if (isRecord(media)) hits.push({ kind: "media", media })
+    else if ("if_gated_logged_out" in polaris) hits.push({ kind: "gated" })
   }
-  for (const value of Object.values(node)) {
-    const hit = findPolarisMedia(value)
-    if (hit !== undefined) return hit
-  }
-  return undefined
+  for (const value of Object.values(node)) collectPolarisMedia(value, hits)
 }
 
 const CONTEXT_JSON = /"contextJSON"\s*:\s*"((?:[^"\\]|\\.)*)"/
@@ -202,25 +244,27 @@ export const instagramExtractor: Extractor = {
       }
       let gated = false
       for (const payload of scriptJsonPayloads(page.text)) {
-        const hit = findPolarisMedia(payload)
-        if (hit === undefined) continue
-        if (hit.kind === "gated") {
-          gated = true
-          continue
+        const hits: CrawlerHit[] = []
+        collectPolarisMedia(payload, hits)
+        for (const hit of hits) {
+          if (hit.kind === "gated") {
+            gated = true
+            continue
+          }
+          // The page can embed media for other posts (author timeline);
+          // only a matching shortcode is ours. Others are skipped.
+          const code = isRecord(hit.media) ? hit.media["code"] : undefined
+          if (code !== identity.id) continue
+          const decoded = yield* Effect.mapError(
+            Schema.decodeUnknownEffect(CrawlerMedia)(hit.media),
+            () =>
+              failure(
+                "SCHEMA_CHANGED",
+                "Instagram crawler payload did not match the expected document",
+              ),
+          )
+          return yield* toCrawlerMediaPost(decoded, identity)
         }
-        // The page can embed media for other posts (author timeline); only a
-        // matching shortcode is ours. Others are skipped before decoding.
-        const code = isRecord(hit.media) ? hit.media["code"] : undefined
-        if (code !== identity.id) continue
-        const decoded = yield* Effect.mapError(
-          Schema.decodeUnknownEffect(CrawlerMedia)(hit.media),
-          () =>
-            failure(
-              "SCHEMA_CHANGED",
-              "Instagram crawler payload did not match the expected document",
-            ),
-        )
-        return yield* toCrawlerMediaPost(decoded, identity)
       }
 
       // Anonymous path 2: the embed page still exposes gql_data, but its

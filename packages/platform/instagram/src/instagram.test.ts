@@ -311,9 +311,11 @@ describe("instagram extractor", () => {
     )
     const reel = await loadFixture("crawler-reel")
     // A page that first exposes another post's media, then ours.
+    const scriptStart = reel.indexOf("<script")
+    const scriptEnd = reel.indexOf("</script>") + "</script>".length
     const merged = other.replace(
       "</body></html>",
-      reel.match(/<script[^>]*>([\s\S]*?)<\/script>/i)?.[0] ?? "",
+      scriptStart >= 0 ? reel.slice(scriptStart, scriptEnd) : "",
     )
     const { result } = await extract(
       "https://www.instagram.com/reel/DZJwSuXom8P/",
