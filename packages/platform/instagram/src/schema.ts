@@ -44,7 +44,7 @@ const VideoVersion = Schema.Struct({
 
 const crawlerBase = {
   code: Shortcode,
-  user: Schema.optionalKey(CrawlerUser),
+  user: Schema.optionalKey(Schema.NullOr(CrawlerUser)),
   caption: Schema.optionalKey(Schema.NullOr(CaptionText)),
   taken_at: Schema.optionalKey(Schema.Finite),
   original_width: Schema.optionalKey(PositiveInt),
@@ -58,13 +58,30 @@ const CrawlerVideo = Schema.Struct({
   video_versions: Schema.NonEmptyArray(VideoVersion),
 })
 
+// Carousel children can lose their renditions (licensed audio, still
+// processing); a missing ladder degrades that child to its cover image.
+const CrawlerChildVideo = Schema.Struct({
+  __typename: Schema.Literal("XIGPolarisVideoMedia"),
+  video_versions: Schema.optionalKey(Schema.NonEmptyArray(VideoVersion)),
+  original_width: Schema.optionalKey(PositiveInt),
+  original_height: Schema.optionalKey(PositiveInt),
+  image_versions2: Schema.optionalKey(ImageVersions2),
+})
+
 const CrawlerImage = Schema.Struct({
   ...crawlerBase,
   __typename: Schema.Literal("XIGPolarisImageMedia"),
   image_versions2: ImageVersions2,
 })
 
-const CrawlerChild = Schema.Union([CrawlerVideo, CrawlerImage])
+const CrawlerChildImage = Schema.Struct({
+  __typename: Schema.Literal("XIGPolarisImageMedia"),
+  original_width: Schema.optionalKey(PositiveInt),
+  original_height: Schema.optionalKey(PositiveInt),
+  image_versions2: ImageVersions2,
+})
+
+const CrawlerChild = Schema.Union([CrawlerChildVideo, CrawlerChildImage])
 
 const CrawlerCarousel = Schema.Struct({
   ...crawlerBase,
@@ -89,7 +106,7 @@ const Dimensions = Schema.Struct({
 
 const Owner = Schema.Struct({
   username: Schema.optionalKey(Username),
-  full_name: Schema.optionalKey(Schema.String.check(Schema.isNonEmpty())),
+  full_name: Schema.optionalKey(Schema.String),
 })
 
 const Caption = Schema.Struct({

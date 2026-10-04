@@ -72,7 +72,6 @@ function videoFrom(media: {
     id: media.shortcode,
     ...(width === undefined ? {} : { width }),
     ...(height === undefined ? {} : { height }),
-    thumbnail: media.display_url,
     delivery: deliveryFor(media.video_url),
   }
 }
@@ -95,7 +94,6 @@ function assetsFrom(
             ...(node.dimensions?.height === undefined
               ? {}
               : { height: node.dimensions.height }),
-            thumbnail: node.display_url,
             delivery: deliveryFor(node.video_url),
           }
           return [asset]
@@ -127,14 +125,14 @@ function authorFrom(
         readonly full_name?: string
         readonly profile_pic_url?: string
       }
+    | null
     | undefined,
 ): Author | undefined {
-  if (owner === undefined) {
+  if (owner === undefined || owner === null) {
     return undefined
   }
   const username = owner.username
   const name = owner.full_name
-  const avatar = owner.profile_pic_url
   if (username === undefined && name === undefined) {
     return undefined
   }
@@ -151,7 +149,7 @@ function authorFrom(
   if (base === undefined) {
     return undefined
   }
-  return { ...base, ...(avatar === undefined ? {} : { avatar }) }
+  return base
 }
 
 function descriptionFrom(media: {
@@ -252,14 +250,15 @@ function crawlerImageAsset(
 
 function crawlerVideoAsset(
   id: string,
-  media: Extract<CrawlerMedia, { __typename: "XIGPolarisVideoMedia" }>,
+  media: {
+    readonly video_versions: readonly [
+      { readonly url: string },
+      ...ReadonlyArray<{ readonly url: string }>,
+    ]
+    readonly original_width?: number
+    readonly original_height?: number
+  },
 ): VideoAsset {
-  const url = media.video_versions[0].url
-  const thumbnail = media.image_versions2?.candidates.reduce((a, b) =>
-    (a.width ?? 0) * (a.height ?? 0) >= (b.width ?? 0) * (b.height ?? 0)
-      ? a
-      : b,
-  )
   return {
     type: "video",
     id,
@@ -269,18 +268,24 @@ function crawlerVideoAsset(
     ...(media.original_height === undefined
       ? {}
       : { height: media.original_height }),
-    ...(thumbnail === undefined ? {} : { thumbnail: thumbnail.url }),
-    delivery: deliveryFor(url),
+    delivery: deliveryFor(media.video_versions[0].url),
   }
 }
 
 function crawlerAssetsFrom(media: CrawlerMedia): readonly MediaAsset[] {
   if (media.__typename === "XIGPolarisCarouselMedia") {
-    return media.carousel_media.map((child, index) => {
+    return media.carousel_media.flatMap((child, index): MediaAsset[] => {
       const id = `${media.code}:${index + 1}`
-      return child.__typename === "XIGPolarisVideoMedia"
-        ? crawlerVideoAsset(id, child)
-        : crawlerImageAsset(id, child)
+      if (
+        child.__typename === "XIGPolarisVideoMedia" &&
+        child.video_versions !== undefined
+      ) {
+        return [crawlerVideoAsset(id, { ...child, video_versions: child.video_versions })]
+      }
+      if (child.image_versions2 !== undefined) {
+        return [crawlerImageAsset(id, { ...child, image_versions2: child.image_versions2 })]
+      }
+      return []
     })
   }
   if (media.__typename === "XIGPolarisVideoMedia") {
@@ -308,10 +313,12 @@ export function toCrawlerMediaPost(
       : media.caption.text.length === 0
         ? undefined
         : media.caption.text
+  const takenAt =
+    media.taken_at === undefined ? undefined : new Date(media.taken_at * 1000)
   const publishedAt =
-    media.taken_at === undefined
+    takenAt === undefined || Number.isNaN(takenAt.getTime())
       ? undefined
-      : new Date(media.taken_at * 1000).toISOString()
+      : takenAt.toISOString()
   const post: MediaPost = {
     platform: "instagram",
     id: identity.id,

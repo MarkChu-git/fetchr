@@ -19,6 +19,8 @@ function resource(href: string): CanonicalResource {
 function transportFor(routes: {
   readonly crawler: string
   readonly embed?: string
+  readonly crawlerStatus?: number
+  readonly embedStatus?: number
 }): {
   readonly transport: Transport
   readonly requests: Request[]
@@ -29,12 +31,14 @@ function transportFor(routes: {
     transport: {
       request(input) {
         requests.push(input)
-        const body = input.url.endsWith("/embed")
-          ? (routes.embed ?? "")
-          : routes.crawler
+        const isEmbed = input.url.endsWith("/embed")
+        const body = isEmbed ? (routes.embed ?? "") : routes.crawler
+        const status = isEmbed
+          ? (routes.embedStatus ?? 200)
+          : (routes.crawlerStatus ?? 200)
         return Effect.succeed(
           new Response(body, {
-            status: 200,
+            status,
             headers: { "content-type": "text/html" },
           }),
         )
@@ -45,7 +49,12 @@ function transportFor(routes: {
 
 async function extract(
   href: string,
-  routes: { readonly crawler: string; readonly embed?: string },
+  routes: {
+    readonly crawler: string
+    readonly embed?: string
+    readonly crawlerStatus?: number
+    readonly embedStatus?: number
+  },
 ): Promise<{
   readonly result: Result.Result<MediaPost, ExtractFailure>
   readonly requests: Request[]
@@ -144,7 +153,6 @@ describe("instagram extractor", () => {
     expect(post.author?.profileUrl).toBe(
       "https://www.instagram.com/_hiraanizamani101/",
     )
-    expect(post.author?.avatar).toContain("cdninstagram.com")
     expect(post.description).toContain("paste reel link in comments")
     expect(post.publishedAt).toBe(new Date(1780551335 * 1000).toISOString())
     expect(post.media).toHaveLength(1)
@@ -152,7 +160,7 @@ describe("instagram extractor", () => {
     if (media?.type !== "video") throw new Error("expected a video asset")
     expect(media.width).toBe(720)
     expect(media.height).toBe(1280)
-    expect(media.thumbnail).toContain("fbcdn.net")
+    expect("thumbnail" in media).toBe(false)
     expect(media.delivery).toEqual({
       type: "proxy",
       token: "pending",
@@ -240,5 +248,79 @@ describe("instagram extractor", () => {
       embed: await loadFixture("gone"),
     })
     expectFailure(result, "MEDIA_NOT_FOUND")
+  })
+
+  test("keeps the genuine upload resolution even when it is low", async () => {
+    const crawler = await loadFixture("crawler-lowres")
+    const { result } = await extract(
+      "https://www.instagram.com/reel/DISz1RfNd3K/",
+      { crawler },
+    )
+    const media = expectSuccess(result).media[0]
+    if (media?.type !== "video") throw new Error("expected a video asset")
+    expect(media.width).toBe(360)
+    expect(media.height).toBe(640)
+  })
+
+  test("reports RATE_LIMITED when the crawler page is throttled", async () => {
+    const { result } = await extract("https://www.instagram.com/reel/X/", {
+      crawler: "",
+      crawlerStatus: 429,
+    })
+    expectFailure(result, "RATE_LIMITED")
+  })
+
+  test("reports RATE_LIMITED when only the embed is throttled", async () => {
+    const { result } = await extract("https://www.instagram.com/reel/X/", {
+      crawler: await loadFixture("gone"),
+      embed: "",
+      embedStatus: 429,
+    })
+    expectFailure(result, "RATE_LIMITED")
+  })
+
+  test("reports MEDIA_NOT_FOUND for a 404 crawler page", async () => {
+    const { result } = await extract("https://www.instagram.com/p/GONE404/", {
+      crawler: "",
+      crawlerStatus: 404,
+    })
+    expectFailure(result, "MEDIA_NOT_FOUND")
+  })
+
+  test("reports SOURCE_UNAVAILABLE for a 5xx crawler page", async () => {
+    const { result } = await extract("https://www.instagram.com/reel/X/", {
+      crawler: "",
+      crawlerStatus: 502,
+    })
+    expectFailure(result, "SOURCE_UNAVAILABLE")
+  })
+
+  test("reports LOGIN_REQUIRED when the post is gated for logged-out clients", async () => {
+    const gated = `<!DOCTYPE html><html><body><script>{"require":[["x",null,[{"data":{"xig_polaris_media":{"if_gated_logged_out":{}}}}]]]}</script></body></html>`
+    const { result } = await extract("https://www.instagram.com/reel/GATED1/", {
+      crawler: gated,
+      embed: await loadFixture("gone"),
+    })
+    expectFailure(result, "LOGIN_REQUIRED")
+  })
+
+  test("skips crawler media whose shortcode does not match the request", async () => {
+    const other = (await loadFixture("crawler-image")).replaceAll(
+      "CiKgnBEPU9g",
+      "OTHERCODE1",
+    )
+    const reel = await loadFixture("crawler-reel")
+    // A page that first exposes another post's media, then ours.
+    const merged = other.replace(
+      "</body></html>",
+      reel.match(/<script[^>]*>([\s\S]*?)<\/script>/)?.[0] ?? "",
+    )
+    const { result } = await extract(
+      "https://www.instagram.com/reel/DZJwSuXom8P/",
+      { crawler: merged },
+    )
+    const post = expectSuccess(result)
+    expect(post.id).toBe("DZJwSuXom8P")
+    expect(post.media[0]?.type).toBe("video")
   })
 })

@@ -50,7 +50,7 @@ function match(url: URL): boolean {
 }
 
 const ENTITIES: ReadonlyArray<readonly [RegExp, string]> = [
-  [/&quot;/g, '"'],
+  [/&quot;|&#34;|&#x22;/gi, '"'],
   [/&#x27;|&#39;/g, "'"],
   [/&#x2F;/g, "/"],
   [/&lt;/g, "<"],
@@ -72,9 +72,14 @@ function scriptJsonPayloads(html: string): readonly unknown[] {
     const body = m[1]
     if (body === undefined || !body.includes("xig_polaris_media")) continue
     try {
-      out.push(JSON.parse(unescapeEntities(body)))
+      out.push(JSON.parse(body))
     } catch {
-      // Not every matching script is the JSON payload; keep looking.
+      // Server-rendered payloads are often entity-encoded; retry decoded.
+      try {
+        out.push(JSON.parse(unescapeEntities(body)))
+      } catch {
+        // Not every matching script is the JSON payload; keep looking.
+      }
     }
   }
   return out
@@ -110,11 +115,11 @@ function findPolarisMedia(node: unknown): CrawlerHit | undefined {
   return undefined
 }
 
-const CONTEXT_JSON = /"contextJSON":"((?:[^"\\]|\\.)*)"/
+const CONTEXT_JSON = /"contextJSON"\s*:\s*"((?:[^"\\]|\\.)*)"/
 
 function embedPayload(html: string): unknown {
-  const m = CONTEXT_JSON.exec(html)
-  if (m === null) return undefined
+  const m = CONTEXT_JSON.exec(unescapeEntities(html))
+  if (m === null || m[1] === undefined) return undefined
   try {
     const inner: unknown = JSON.parse(`"${m[1]}"`)
     if (typeof inner !== "string") return undefined
@@ -185,6 +190,11 @@ export const instagramExtractor: Extractor = {
           failure("RATE_LIMITED", "Instagram throttled the request"),
         )
       }
+      if (page.status === 404) {
+        return yield* Effect.fail(
+          failure("MEDIA_NOT_FOUND", "Instagram post not found"),
+        )
+      }
       if (page.status >= 400) {
         return yield* Effect.fail(
           failure("SOURCE_UNAVAILABLE", "Instagram post page failed"),
@@ -198,6 +208,10 @@ export const instagramExtractor: Extractor = {
           gated = true
           continue
         }
+        // The page can embed media for other posts (author timeline); only a
+        // matching shortcode is ours. Others are skipped before decoding.
+        const code = isRecord(hit.media) ? hit.media["code"] : undefined
+        if (code !== identity.id) continue
         const decoded = yield* Effect.mapError(
           Schema.decodeUnknownEffect(CrawlerMedia)(hit.media),
           () =>
@@ -216,7 +230,20 @@ export const instagramExtractor: Extractor = {
         `https://www.instagram.com/p/${identity.id}/embed`,
         MOBILE_UA,
       )
-      const gql = embed.status < 400 ? embedPayload(embed.text) : undefined
+      if (embed.status === 429) {
+        return yield* Effect.fail(
+          failure("RATE_LIMITED", "Instagram throttled the request"),
+        )
+      }
+      if (embed.status >= 500) {
+        return yield* Effect.fail(
+          failure("SOURCE_UNAVAILABLE", "Instagram embed page failed"),
+        )
+      }
+      const gql =
+        embed.status >= 200 && embed.status < 300
+          ? embedPayload(embed.text)
+          : undefined
       if (gql !== undefined) {
         const decoded = yield* Effect.mapError(
           Schema.decodeUnknownEffect(InstagramPayload)(gql),
@@ -228,7 +255,15 @@ export const instagramExtractor: Extractor = {
         )
         return yield* toMediaPost(decoded, identity)
       }
-      if (gated || page.text.includes('property="og:image"')) {
+      if (gated) {
+        return yield* Effect.fail(
+          failure(
+            "LOGIN_REQUIRED",
+            "Instagram requires a login to view this post",
+          ),
+        )
+      }
+      if (page.text.includes('property="og:image"')) {
         return yield* Effect.fail(
           failure(
             "PRIVATE_MEDIA",
