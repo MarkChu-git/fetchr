@@ -5,7 +5,7 @@ import {
   type MediaPost,
   type Transport,
 } from "@fetchr/core"
-import { assertPublicHttpUrl, verify } from "@fetchr/delivery"
+import { assertPublicHttpUrl, ProxyTokenError, verify } from "@fetchr/delivery"
 import { bilibiliExtractor } from "@fetchr/platform-bilibili"
 import { douyinExtractor } from "@fetchr/platform-douyin"
 import { instagramExtractor } from "@fetchr/platform-instagram"
@@ -169,7 +169,9 @@ export async function runProductExtract(
   try {
     post = await sealPost(post, proxySecret(), input.now)
   } catch (error) {
-    if (!(error instanceof SealError)) throw error
+    if (!(error instanceof SealError || error instanceof ProxyTokenError)) {
+      throw error
+    }
     console.info(
       safeLog({
         platform: post.platform,
