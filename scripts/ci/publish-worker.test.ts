@@ -76,3 +76,9 @@ List all deployments for a Worker.
   expect(deploymentVersionFrom("not json")).toBeUndefined()
   expect(deploymentVersionFrom('{"deployments": []}')).toBeUndefined()
 })
+
+test("deploymentVersionFrom tolerates stderr noise after the JSON body", () => {
+  const output = `{"deployments": [{"versions": [{"version_id": "7d3feb00-ddf1-457f-a692-3526aa0629de", "percentage": 100}]}]}
+✨  Done in 0.42s`
+  expect(deploymentVersionFrom(output)).toBe("7d3feb00-ddf1-457f-a692-3526aa0629de")
+})
