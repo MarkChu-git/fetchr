@@ -42,6 +42,8 @@ export interface PageCopy {
   readonly redirectInvalid: string
   readonly redirectRejected: string
   readonly redirectTooMany: string
+  readonly footerNotice: string
+  readonly footerTerms: string
   readonly platforms: readonly string[]
   readonly platform: Record<Platform, string>
   manifest(protocol: string): string
@@ -94,6 +96,8 @@ const copy = {
     redirectInvalid: "上游跳转无效",
     redirectRejected: "上游跳转被拒绝",
     redirectTooMany: "上游跳转过多",
+    footerNotice: "下载内容仅供个人使用，版权归原作者所有",
+    footerTerms: "使用条款",
     platforms: ["小红书", "抖音", "Instagram", "哔哩哔哩", "YouTube", "X"],
     platform: zhPlatform,
     manifest: (protocol: string) => `这是一份 ${protocol} 清单`,
@@ -120,6 +124,8 @@ const copy = {
     redirectInvalid: "The upstream redirect is not valid",
     redirectRejected: "The upstream redirect was rejected",
     redirectTooMany: "Too many upstream redirects",
+    footerNotice: "Downloads are for personal use; content belongs to the original creators",
+    footerTerms: "Terms",
     platforms: ["Xiaohongshu", "Douyin", "Instagram", "Bilibili", "YouTube", "X"],
     platform: enPlatform,
     manifest: (protocol: string) => `This is a ${protocol} manifest`,
