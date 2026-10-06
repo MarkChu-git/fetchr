@@ -11,6 +11,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "doctor": "astryx doctor",
+    "og:fonts": "bun scripts/og/fonts.ts",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "deploy": "cf deploy"
   },
