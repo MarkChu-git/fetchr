@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { pageCopy, type Locale } from "./i18n"
 import { shareAssets } from "./share-assets.gen"
-import { isWeChatUserAgent, shareMeta, squareImageSrc, type MetaTag } from "./share-meta"
+import { isWeChatUserAgent, readRequestFacts, shareMeta, squareImageSrc, type MetaTag } from "./share-meta"
 
 const ORIGIN = "https://fetchr.hanyang.app"
 
@@ -114,4 +114,19 @@ test("WeChat's own browsers are recognised and others are not", () => {
 test("the square image address carries the content hash, and is null without an origin", () => {
   expect(squareImageSrc(ORIGIN, shareAssets)).toBe(`${ORIGIN}/share/square.png?v=${shareAssets.square.version}`)
   expect(squareImageSrc(null, shareAssets)).toBeNull()
+})
+
+test("request facts that cannot be read fall back to no origin and not WeChat, and the page still gets its tags", () => {
+  const unreadable = readRequestFacts(() => {
+    throw new Error("there is no request here")
+  })
+  expect(unreadable).toEqual({ origin: null, wechat: false })
+  const tags = shareMeta({ locale: "zh", copy: pageCopy("zh"), origin: unreadable.origin, pathname: "/", images: shareAssets })
+  expect(titleOf(tags)).toBe(pageCopy("zh").title)
+  expect(valueOf(tags, "og:image")).toBeUndefined()
+  expect(squareImageSrc(unreadable.origin, shareAssets)).toBeNull()
+})
+
+test("request facts that can be read are passed through untouched", () => {
+  expect(readRequestFacts(() => ({ origin: ORIGIN, wechat: true }))).toEqual({ origin: ORIGIN, wechat: true })
 })

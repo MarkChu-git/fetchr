@@ -81,7 +81,7 @@
 
 **D8 页面接入：纯函数 `share-meta.ts` + 根路由 loader**
 - `apps/web/src/share-meta.ts`（只用 Web API）输入语言、origin、路径与 `share-assets.gen.ts` 的图片信息，输出 `title`、`description` 与全部 `og:*`、`twitter:card` 标签；`isWeChatUserAgent(ua)` 也在这里。所有对外文案在一处。
-- 根路由新增 loader，调用一个 `createServerFn`，在请求内用 `getRequestUrl()` 与 `getRequestHeader('user-agent')`，返回 `{ origin, wechat }`。TanStack Start 在服务端渲染时直接执行它，loader 数据自动 dehydrate 到客户端，水合一致。根路由设 `staleTime: Infinity`，语言切换这类客户端导航不再触发 RPC。
+- 根路由新增 loader，调用一个 `createServerFn`，在请求内用 `getRequestUrl()` 与 `getRequestHeader('user-agent')`，返回 `{ origin, wechat }`。TanStack Start 在服务端渲染时直接执行它，loader 数据自动 dehydrate 到客户端，水合一致。根路由设 `staleTime: Infinity`。实测默认设置下语言切换和客户端跳转也不会重新请求（根 match 在跳转间保留），所以它只是兜底；端到端测试守的是行为，即水合之后没有 `_serverFn` 请求（让 loader 重跑时该测试会变红，已验证）。
 - 整个 server fn 包 try/catch，失败返回 `{ origin: null, wechat: false }`；`origin` 为空时 `share-meta` 省略 `og:url` 与 `og:image*`。
 - 不写死域名：README 有一键部署按钮，fork 与 preview 的域名都不同。替代：`VITE_SITE_URL`（构建期常量，对 fork 与 preview 不对）；相对路径（爬虫不可靠）。
 - 请求信息只在请求内读取，不放模块作用域（Workers 上 env 与请求按次注入）。

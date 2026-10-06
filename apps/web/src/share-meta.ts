@@ -72,6 +72,27 @@ export function squareImageSrc(origin: string | null, images: ShareImages): stri
   return origin === null ? null : imageUrl(origin, images.square)
 }
 
+export interface RequestFacts {
+  readonly origin: string | null
+  readonly wechat: boolean
+}
+
+/** What a page knows when the request cannot be read: no address to build absolute URLs from, and not WeChat. */
+export const NO_REQUEST_FACTS: RequestFacts = { origin: null, wechat: false }
+
+/**
+ * What the share tags need from the request. Share metadata must never take a page down, so if `read` throws
+ * (no request in scope, an RPC that failed) the answer is no origin and not WeChat: the page loses its image
+ * tags and nothing else.
+ */
+export function readRequestFacts(read: () => RequestFacts): RequestFacts {
+  try {
+    return read()
+  } catch {
+    return NO_REQUEST_FACTS
+  }
+}
+
 /** True inside WeChat's in-app browser, on phones and desktop alike: every build puts MicroMessenger in the user agent. */
 export function isWeChatUserAgent(userAgent: string | null | undefined): boolean {
   return /MicroMessenger/i.test(userAgent ?? "")

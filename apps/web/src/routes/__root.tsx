@@ -1,6 +1,8 @@
 import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
 import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
+import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeader, getRequestUrl } from "@tanstack/react-start/server"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
@@ -8,10 +10,31 @@ import "@fontsource/figtree/400.css"
 import "@fontsource/figtree/500.css"
 import "@fontsource/figtree/600.css"
 import { htmlLang, localeFromSearch, pageCopy } from "../i18n"
+import { shareAssets } from "../share-assets.gen"
+import { NO_REQUEST_FACTS, isWeChatUserAgent, readRequestFacts, shareMeta, squareImageSrc, type RequestFacts } from "../share-meta"
 import "../styles.css"
 
+/**
+ * What the share tags need to know about the request. It has to be read inside the request, where Workers
+ * inject it. `readRequestFacts` keeps a failure here from reaching the page.
+ */
+const loadRequestFacts = createServerFn({ method: "GET" }).handler(
+  (): RequestFacts => readRequestFacts(() => ({ origin: getRequestUrl().origin, wechat: isWeChatUserAgent(getRequestHeader("user-agent")) })),
+)
+
 export const Route = createRootRoute({
-  head: ({ match }) => {
+  // The origin and the user agent cannot change while the page is open, so they never go stale. The router keeps the root
+  // match across navigations anyway; this keeps it from asking the server again if its defaults ever change.
+  staleTime: Infinity,
+  // A failed call, which can only happen over the network on the client, costs the page its image tags and nothing more.
+  loader: async (): Promise<RequestFacts> => {
+    try {
+      return await loadRequestFacts()
+    } catch {
+      return NO_REQUEST_FACTS
+    }
+  },
+  head: ({ match, matches, loaderData }) => {
     // The root route has no search validator, so search is untyped here.
     const locale = localeFromSearch((match.search as { lang?: string }).lang)
     return {
@@ -21,11 +44,14 @@ export const Route = createRootRoute({
           name: "viewport",
           content: "width=device-width, initial-scale=1",
         },
-        { title: "Fetchr" },
-        {
-          name: "description",
-          content: pageCopy(locale).description,
-        },
+        // The root match's own pathname is not the page's; the deepest match is.
+        ...shareMeta({
+          locale,
+          copy: pageCopy(locale),
+          origin: loaderData?.origin ?? null,
+          pathname: matches.at(-1)?.pathname ?? "/",
+          images: shareAssets,
+        }),
       ],
       links: [
         // SVG stays sharp in the tab. The PNG covers clients that ignore SVG icons.
@@ -41,6 +67,8 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { readonly children: ReactNode }) {
   const searchStr = useRouterState({ select: (state) => state.location.searchStr })
   const lang = htmlLang(localeFromSearch(new URLSearchParams(searchStr).get("lang")))
+  const facts = Route.useLoaderData()
+  const square = facts.wechat ? squareImageSrc(facts.origin, shareAssets) : null
   return (
     <html lang={lang}>
       <head>
@@ -52,6 +80,10 @@ function RootDocument({ children }: { readonly children: ReactNode }) {
         ) : null}
       </head>
       <body>
+        {/* Inside WeChat only. A page shared to Moments gets a title and one small square picture, and WeChat may take that picture from the first large image it finds on the page. This one sits off screen rather than under display:none, because a hidden image does not count as visible. If checking on a real phone shows it does nothing, delete this block, the `wechat` fact and isWeChatUserAgent. */}
+        {square === null ? null : (
+          <img src={square} width={600} height={600} alt="" aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: 0 }} />
+        )}
         {/* The paste form is interactive in the server HTML. Stop that submit before React attaches, or the browser navigates to ?url= and drops ?lang=. */}
         <script
           dangerouslySetInnerHTML={{
