@@ -25,6 +25,7 @@ Compatibility:
 
 Generated code:
 - Never edit `apps/web/src/routeTree.gen.ts` by hand. Modify routes and regenerate with `bun run generate`. `bun run generate:check` runs in CI.
+- Never edit the share images and icons by hand: `apps/web/public/share/*.png`, `apps/web/public/favicon-32.png`, `apps/web/public/apple-touch-icon.png`, and `apps/web/src/share-assets.gen.ts`. Change the copy in `apps/web/src/i18n.ts`, `apps/web/public/logo.svg`, or the templates in `apps/web/scripts/og`, then regenerate with `bun run generate`. The same `generate:check` covers them.
 
 Delivery:
 - Never bypass preview validation for user-facing changes.
