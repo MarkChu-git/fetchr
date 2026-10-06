@@ -6,7 +6,7 @@
 
 ## 2. 文案字段
 
-- [ ] 2.1 在 `apps/web/src/i18n.ts` 的 `PageCopy` 与中英文文案里新增 `title`、`shareHeadline`、`shareImageAlt`，取值见 design.md D10。改动前对 `PageCopy`、`pageCopy` 跑 GitNexus `impact` 并记录结果。在 `i18n.test.ts` 里为三个新字段各加一条断言（取值与 D10 一致），验证：`i18n.parity.test.ts` 与 `i18n.test.ts` 通过，`bun run verify:fast` 通过。
+- [x] 2.1 在 `apps/web/src/i18n.ts` 的 `PageCopy` 与中英文文案里新增 `title`、`shareHeadline`、`shareImageAlt`，取值见 design.md D10。改动前对 `PageCopy`、`pageCopy` 跑 GitNexus `impact` 并记录结果。在 `i18n.test.ts` 里为三个新字段各加一条断言（取值与 D10 一致），验证：`i18n.parity.test.ts` 与 `i18n.test.ts` 通过，`bun run verify:fast` 通过。
 
 ## 3. 生成器
 
