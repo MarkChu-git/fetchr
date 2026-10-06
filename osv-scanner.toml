@@ -14,3 +14,10 @@ reason = "extract-zip has no fixed release; only extracts Google's official Chro
 [[IgnoredVulns]]
 id = "GHSA-vfj7-8cjw-p6xm"
 reason = "braces has no fixed release; only parses our own glob patterns in dev tooling"
+
+# sprintf-js (via @lhci/utils > js-yaml 3 > argparse 1) has no fixed release, and
+# every published version is affected. Only the js-yaml command line loads argparse.
+# @lhci/utils uses the js-yaml library, so sprintf-js never runs in our CI tooling.
+[[IgnoredVulns]]
+id = "GHSA-hp3w-g68c-fv3c"
+reason = "sprintf-js has no fixed release; js-yaml 3 loads it only from its CLI, which Lighthouse CI tooling does not run"
