@@ -2,7 +2,7 @@
 
 ## 1. 新 logo 与图标源文件
 
-- [ ] 1.1 写入 `apps/web/public/logo.svg` 并替换 `apps/web/public/favicon.svg`（内容见 design.md 附录 A）。先写 `apps/web/src/brand-mark.test.ts`，断言：两份 SVG 自包含（无 `<text>`、`<script>`、`<image>`、`href`、`@import`）；`logo.svg` 的底板、F、圆点颜色为字面值；`favicon.svg` 与 `logo.svg` 的图形位置与尺寸完全一致；`#e9592a` 对 `#f3f3f5` 与对 `#25252a` 的对比度均不低于 3:1；`favicon.svg` 的深色模式规则把底板与 F 对调且圆点不变。测试先失败，写入 SVG 后 `bun test apps/web/src/brand-mark.test.ts` 通过。
+- [x] 1.1 写入 `apps/web/public/logo.svg` 并替换 `apps/web/public/favicon.svg`（内容见 design.md 附录 A）。先写 `apps/web/src/brand-mark.test.ts`，断言：两份 SVG 自包含（无 `<text>`、`<script>`、`<image>`、`href`、`@import`）；`logo.svg` 的底板、F、圆点颜色为字面值；`favicon.svg` 与 `logo.svg` 的图形位置与尺寸完全一致；`#e9592a` 对 `#f3f3f5` 与对 `#25252a` 的对比度均不低于 3:1；`favicon.svg` 的深色模式规则把底板与 F 对调且圆点不变。测试先失败，写入 SVG 后 `bun test apps/web/src/brand-mark.test.ts` 通过。
 
 ## 2. 文案字段
 
