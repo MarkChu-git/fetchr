@@ -5,6 +5,7 @@
 import { readFileSync } from "node:fs"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
+import { pageCopy } from "../../src/i18n.ts"
 import { figtreeDir, woffCoverage } from "./font-store.ts"
 import { syncFonts } from "./font-sync.ts"
 import { cardTexts, locales } from "./share-texts.ts"
@@ -17,7 +18,7 @@ for (const weight of [500, 600, 700] as const) {
 }
 
 try {
-  const result = await syncFonts({ dir, texts: locales.flatMap((locale) => cardTexts(locale)), covered, fetch: (url) => fetch(url) })
+  const result = await syncFonts({ dir, texts: locales.flatMap((locale) => cardTexts(pageCopy(locale))), covered, fetch: (url) => fetch(url) })
   console.log(`fonts: ${result.files.length} slices in ${dir}`)
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error))

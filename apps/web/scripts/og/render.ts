@@ -38,3 +38,14 @@ export async function rasterizeRgba(svg: string, width?: number): Promise<Rgba> 
   resvg.free()
   return result
 }
+
+/** The SVG as a PNG straight from resvg, with transparency kept. With `width`, the image is scaled to that width. */
+export async function rasterizePng(svg: string, width?: number): Promise<Uint8Array> {
+  await ready()
+  const resvg = open(svg, width)
+  const image = resvg.render()
+  const png = image.asPng()
+  image.free()
+  resvg.free()
+  return png
+}

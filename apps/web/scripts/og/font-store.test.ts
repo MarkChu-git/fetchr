@@ -4,6 +4,7 @@ import { tmpdir } from "node:os"
 import { join } from "node:path"
 import { fileURLToPath } from "node:url"
 import { figtreeDir, loadFonts, missingGlyphs, parseFontLock, readFontLock, verifyFontFiles, woffCoverage } from "./font-store.ts"
+import { pageCopy } from "../../src/i18n.ts"
 import { cardTexts, locales } from "./share-texts.ts"
 
 const fontsDir = fileURLToPath(new URL("./fonts/", import.meta.url))
@@ -84,7 +85,7 @@ test("woffCoverage reads the characters a font really maps to a glyph", () => {
 test("every string drawn on a share card is covered by the loaded fonts", () => {
   const fonts = loadFonts(fontsDir)
   for (const locale of locales) {
-    for (const text of cardTexts(locale)) {
+    for (const text of cardTexts(pageCopy(locale))) {
       expect(missingGlyphs(text, fonts), `${locale}: ${text}`).toEqual([])
     }
   }

@@ -8,9 +8,12 @@ import type { PageCopy } from "../../src/i18n.ts"
 import type { FontWeight } from "./font-store.ts"
 import { SAMPLE_LINK } from "./share-texts.ts"
 
-const INK = "#25252a"
+export const INK = "#25252a"
 const PAPER = "#f3f3f5"
 const WHITE = "#ffffff"
+const ACCENT = "#e9592a"
+/** The colours the quantizer must keep exactly. The accent only reaches a card through the logo. */
+export const BRAND_COLORS = [INK, PAPER, WHITE, ACCENT] as const
 
 const MUTED = "#5e5e63"
 const BORDER = "#e2e2e8"
