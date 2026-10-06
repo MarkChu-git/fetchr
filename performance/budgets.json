@@ -12,9 +12,9 @@
     "failPct": 10
   },
   "baseline": {
-    "totalGzipKb": 514.47265625,
-    "jsTotalGzipKb": 356.005859375,
-    "mainEntryGzipKb": 103.6044921875,
+    "totalGzipKb": 561.083984375,
+    "jsTotalGzipKb": 369.5068359375,
+    "mainEntryGzipKb": 103.802734375,
     "largestChunkGzipKb": 133.5732421875
   }
 }
