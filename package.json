@@ -39,7 +39,13 @@
     "undici": "7.29.1",
     "tmp": "^0.2.7",
     "basic-ftp": "^6.2.1",
-    "uuid": "^11.1.1"
+    "uuid": "^11.1.1",
+    "satori": {
+      "fflate": "0.7.5"
+    },
+    "@shuding/opentype.js": {
+      "fflate": "0.7.5"
+    }
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
