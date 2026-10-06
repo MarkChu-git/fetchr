@@ -162,8 +162,8 @@ interface LoadedFont {
 export interface FontSet {
   readonly fonts: readonly LoadedFont[]
   /** The `fontFamily` value for text of this weight: Figtree first, then each Chinese slice as a per-character fallback. */
-  stack(weight: FontWeight): string
-  covers(char: string): boolean
+  readonly stack: (weight: FontWeight) => string
+  readonly covers: (char: string) => boolean
 }
 
 /** The directory holding the installed Figtree `.woff` files. */

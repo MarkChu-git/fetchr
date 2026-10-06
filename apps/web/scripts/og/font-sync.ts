@@ -7,7 +7,7 @@ import { mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs"
 import { join } from "node:path"
 import { FONT_SOURCE, FONT_WEIGHTS, sha256, type FontLock, type FontWeight } from "./font-store.ts"
 
-const SOURCE_BASE =`https://cdn.jsdelivr.net/npm/${FONT_SOURCE.package}@${FONT_SOURCE.version}`
+const SOURCE_BASE = `https://cdn.jsdelivr.net/npm/${FONT_SOURCE.package}@${FONT_SOURCE.version}`
 
 export interface SliceEntry {
   readonly file: string

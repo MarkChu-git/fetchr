@@ -3,7 +3,7 @@ import { pageCopy, type Locale } from "../../src/i18n.ts"
 export const locales = ["zh", "en"] as const satisfies readonly Locale[]
 
 /** The example link drawn inside the card's input field. It is decoration, not a real post. */
-const SAMPLE_LINK ="https://v.douyin.com/iR8aXk2/"
+export const SAMPLE_LINK = "https://v.douyin.com/iR8aXk2/"
 
 /**
  * Every string a share card draws, per locale. The templates read the same copy, so the font coverage check

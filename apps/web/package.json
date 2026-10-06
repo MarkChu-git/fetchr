@@ -43,6 +43,7 @@
     "@babel/core": "7.29.6",
     "@cloudflare/vite-plugin": "1.60.2",
     "@lhci/cli": "^0.15",
+    "@resvg/resvg-wasm": "2.6.2",
     "@stylexjs/babel-plugin": "0.19.1",
     "@stylexjs/unplugin": "0.19.1",
     "@types/node": "22.19.15",
@@ -50,6 +51,7 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.1",
     "cf": "^1.0.0-beta.11",
+    "satori": "0.35.0",
     "typescript": "5.9.2",
     "vite": "8.1.3"
   },
