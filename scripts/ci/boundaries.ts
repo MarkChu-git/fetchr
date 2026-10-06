@@ -3,9 +3,10 @@
  * Tests, fixtures, and scripts/ci may use Bun and Node, because they never deploy.
  * Core, delivery, the mux package, and the fixture package do not import a platform.
  * One platform package does not import another. Astryx and StyleX stay in the web app.
+ * The share images are drawn at build time, so shipped source never imports satori, @resvg, or apps/web/scripts.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs"
-import { join, relative, sep } from "node:path"
+import { join, posix, relative, sep } from "node:path"
 
 export type Violation = {
   readonly path: string
@@ -49,6 +50,11 @@ const isolatedPackages = new Set([
 
 const runtimeApis = ["file", "spawn", "spawnSync", "serve", "write", "listen"] as const
 
+// satori and @resvg draw the share images. apps/web/scripts holds the generator and the fonts it draws with.
+// Importing any of them would put a renderer or a font in the Worker.
+const rendererSpecifier = /^(?:satori|@resvg\/[^/]+)(?:\/|$)/
+const generatorDirectory = "apps/web/scripts"
+
 const forbiddenLockfiles = [
   "package-lock.json",
   "pnpm-lock.yaml",
@@ -90,11 +96,17 @@ export function runtimeViolations(relativePath: string, source: string): Violati
   const violations: Violation[] = []
   const withoutComments = stripComments(source)
   for (const specifier of importSpecifiers(withoutComments)) {
-    if (!isRuntimeSpecifier(specifier)) continue
-    violations.push({
-      path: normalize(relativePath),
-      message: `shipped source imports ${specifier}`,
-    })
+    if (isRuntimeSpecifier(specifier)) {
+      violations.push({
+        path: normalize(relativePath),
+        message: `shipped source imports ${specifier}`,
+      })
+    } else if (isBuildTimeOnly(relativePath, specifier)) {
+      violations.push({
+        path: normalize(relativePath),
+        message: `shipped source imports ${specifier}, which only runs at build time`,
+      })
+    }
   }
   const withoutStrings = stripStrings(withoutComments)
   for (const api of runtimeApis) {
@@ -265,6 +277,14 @@ function isRuntimeSpecifier(specifier: string): boolean {
     specifier === "child_process" ||
     specifier === "fs/promises"
   )
+}
+
+/** A renderer package, or a relative path that lands inside the generator's directory. */
+function isBuildTimeOnly(relativePath: string, specifier: string): boolean {
+  if (rendererSpecifier.test(specifier)) return true
+  if (!specifier.startsWith(".")) return false
+  const target = posix.join(posix.dirname(normalize(relativePath)), specifier)
+  return target === generatorDirectory || target.startsWith(`${generatorDirectory}/`)
 }
 
 function importSpecifiers(source: string): string[] {

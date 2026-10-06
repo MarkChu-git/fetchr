@@ -13,6 +13,8 @@ import {
 
 const root = join(import.meta.dir, "../..")
 
+const messages = (path: string, source: string): string[] => runtimeViolations(path, source).map((item) => item.message)
+
 test("shipped source is the code that deploys", () => {
   expect(isShippedSource("packages/core/src/extract.ts")).toBe(true)
   expect(isShippedSource("packages/platform/tiktok/src/parser.ts")).toBe(true)
@@ -40,6 +42,37 @@ test("tests, comments, and ordinary strings are not runtime imports", () => {
   expect(
     runtimeViolations("packages/core/src/extract.ts", '// Bun.file("note")\nconst label = "node:fs"\n'),
   ).toEqual([])
+})
+
+test("shipped source cannot import the share-image renderers", () => {
+  const page = "apps/web/src/routes/__root.tsx"
+  expect(messages(page, 'import satori from "satori"\n')).toEqual(["shipped source imports satori, which only runs at build time"])
+  expect(messages(page, 'import { Resvg } from "@resvg/resvg-wasm"\n')).toEqual([
+    "shipped source imports @resvg/resvg-wasm, which only runs at build time",
+  ])
+  expect(messages(page, 'import wasm from "@resvg/resvg-wasm/index_bg.wasm"\n')).toHaveLength(1)
+  expect(messages(page, 'const { default: satori } = await import("satori")\n')).toHaveLength(1)
+  expect(messages(page, 'const { Resvg } = require("@resvg/resvg-js")\n')).toHaveLength(1)
+})
+
+test("shipped source cannot reach the generator by a relative path", () => {
+  expect(messages("apps/web/src/routes/index.tsx", 'import { ogCard } from "../../scripts/og/templates"\n')).toEqual([
+    "shipped source imports ../../scripts/og/templates, which only runs at build time",
+  ])
+  expect(messages("apps/web/src/share-meta.ts", 'import lock from "../scripts/og/fonts/fonts.lock.json"\n')).toHaveLength(1)
+  expect(messages("apps/web/src/share-meta.ts", 'import "../scripts"\n')).toHaveLength(1)
+})
+
+test("the generator, tests, comments, and the module the generator wrote are not caught by that rule", () => {
+  expect(
+    messages("apps/web/scripts/og/render.ts", 'import satori from "satori"\nimport { initWasm } from "@resvg/resvg-wasm"\n'),
+  ).toEqual([])
+  expect(messages("apps/web/src/share-assets.test.ts", 'import satori from "satori"\n')).toEqual([])
+  expect(messages("apps/web/src/share-meta.ts", '// drawn by satori and @resvg/resvg-wasm\nconst drawnBy = "satori"\n')).toEqual([])
+  // The one way the page gets the images.
+  expect(messages("apps/web/src/routes/__root.tsx", 'import { shareAssets } from "../share-assets.gen"\n')).toEqual([])
+  // A scripts folder inside src is not the generator's.
+  expect(messages("apps/web/src/server/product.ts", 'import { run } from "./scripts/run"\n')).toEqual([])
 })
 
 test("platform packages stay apart from core and from each other", () => {
