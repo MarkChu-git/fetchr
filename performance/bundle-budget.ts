@@ -1,6 +1,7 @@
 import { gzipSync } from "node:zlib"
 import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
+import { applyBaseline } from "./budgets-file.ts"
 
 interface Budgets {
   readonly absolute: {
@@ -92,7 +93,7 @@ async function main() {
   const current = await measure()
 
   if (write) {
-    const next = { ...budgets, baseline: current }
+    const next = applyBaseline(raw, current)
     await Bun.write(budgetsPath, `${JSON.stringify(next, null, 2)}\n`)
     console.log("baseline updated:", JSON.stringify(current))
     return
