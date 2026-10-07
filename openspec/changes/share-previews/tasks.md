@@ -28,7 +28,7 @@
 - [x] 5.1 接入 `scripts/generate.ts`：`generate` 先生成分享资源，再走原有的 routeTree 构建；`generate:check` 先跑快速的 `--check`，再走原有的 `git diff` 检查。验证：手动演示三态（改一个文案字段后 `bun run generate:check` 非零并提示 `bun run generate`；运行 `bun run generate` 后通过；还原改动），且 `scripts/ci/tsconfig.json` 的类型检查通过。
 - [x] 5.2 边界检查：在 `scripts/ci/boundaries.ts` 里禁止 shipped source 引用 `satori` 与 `@resvg/*`，在 `scripts/ci/boundaries.test.ts` 加正反例。验证：`bun test scripts/ci/boundaries.test.ts` 与 `bun run check` 通过；`bun run build` 后确认 `apps/web/dist` 里没有 `.wasm` 与生成器使用的字体文件。
 - [x] 5.3 体积预算。先在未改动的 main 上跑一次 `bun run build && bun run bundle:check`，记录本地基线漂移（探针时本地总量已比基线高约 11 KB）；改动后再跑；用 `bun run bundle:check -- --write` 上调基线，PR 描述里分开写「既有漂移」与「分享图的有意成本」。验证：`bun run bundle:check` 通过，`performance/budgets.json` 里只有 `baseline` 变化，`absolute` 与 `relative` 不动。
-  - 实际做法：`--write` 会把 `absolute` 与 `relative` 里的 `comment` 一并丢掉并改变键的顺序，与上面「只有 `baseline` 变化」冲突，所以只取它算出的数，手改 `baseline` 的三个值。
+  - 实际做法：`--write` 会把 `absolute` 与 `relative` 里的 `comment` 一并丢掉并改变键的顺序，与上面「只有 `baseline` 变化」冲突，所以只取它算出的数，手改 `baseline` 的三个值。这之后 main 上的 #30 修好了 `--write`，它现在保留这两处 `comment`。
   - 实测（gzip，与脚本同一套 Bun 压缩）：未改动的 main 本地 总量 525.44 KB、JS 366.89 KB、主入口 101.36 KB，相对提交的基线（514.47 / 356.01 / 103.60）是既有漂移，总量 +10.97 KB、JS +10.88 KB。分享图带来的有意成本是总量 +35.64 KB：三张分享图 +31.80 KB，图标 PNG +0.96 KB，SVG +0.25 KB，JS +2.62 KB（分享标签、根路由 loader 与 server function 的客户端桩、文案）。
 - [x] 5.4 文档。`README.md` 与 `README.zh-CN.md` 各加一段「分享预览」（图怎么重新生成、哪些文件被提交、字体许可证）；`AGENTS.md` 的「Generated code」补一条：`public/share/*`、`favicon-32.png`、`apple-touch-icon.png` 与 `share-assets.gen.ts` 不手改，用 `bun run generate`；`docs/ci-cd.md` 补一行：`generate:check` 现在也覆盖分享资源，并说明预算基线的上调。验证：`bun run verify` 通过，两份 README 的新段落中英对应。
 

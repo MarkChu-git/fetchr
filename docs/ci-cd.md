@@ -15,7 +15,7 @@ bench 的阻塞档:`detectUrls` 和代理令牌 sign+verify。亚微秒的 match
 
 `generate:check` 除了 routeTree，也守分享资源：先比对分享图输入的哈希与已提交 PNG 的内容哈希（不渲染，所以在 macOS 和 Linux 上结论一致），再构建并 diff `routeTree.gen.ts`。文案、logo 或模板改了而图没重画，它就失败，并提示运行 `bun run generate`。
 
-bundle 预算基线（gzip):总量 561KB、JS 370KB、主入口 104KB、最大 chunk 134KB；绝对上限 650KB、430KB、130KB、170KB，相对基线涨 5% 警告、10% 失败。基线用 `bun run bundle:check -- --write` 更新,bench 基线用 `bun run bench -- --write`。分享图与图标 PNG 也在 `dist/client` 里，计入总量（PNG 几乎压不动），所以加分享图时总量基线上调了约 36KB。`--write` 目前还会删掉 `absolute` 与 `relative` 里的 `comment` 字段，更新后看一眼 `git diff`，只该有 `baseline` 在变。
+bundle 预算基线（gzip):总量 561KB、JS 370KB、主入口 104KB、最大 chunk 134KB；绝对上限 650KB、430KB、130KB、170KB，相对基线涨 5% 警告、10% 失败。基线用 `bun run bundle:check -- --write` 更新,bench 基线用 `bun run bench -- --write`。分享图与图标 PNG 也在 `dist/client` 里，计入总量（PNG 几乎压不动），所以加分享图时总量基线上调了约 36KB。
 
 Lighthouse 打 preview URL（不再打 localhost)，三跑取中位。资源预算是硬门（JS/CSS/总量/零第三方请求）;LCP/CLS/TBT 里 LCP 和 TBT 是警告，CLS >0.25 才算失败。
 
