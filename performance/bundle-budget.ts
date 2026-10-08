@@ -3,26 +3,20 @@ import { readdir, readFile } from "node:fs/promises"
 import { join } from "node:path"
 import { applyBaseline } from "./budgets-file.ts"
 
+const metricKeys = ["totalGzipKb", "jsTotalGzipKb", "mainEntryGzipKb", "largestChunkGzipKb"] as const
+
+type Metrics = Readonly<Record<(typeof metricKeys)[number], number>>
+
 interface Budgets {
-  readonly absolute: {
-    readonly totalGzipKb: number
-    readonly jsTotalGzipKb: number
-    readonly mainEntryGzipKb: number
-    readonly largestChunkGzipKb: number
-  }
+  readonly absolute: Metrics
   readonly relative: { readonly warnPct: number; readonly failPct: number }
-  readonly baseline: {
-    readonly totalGzipKb: number
-    readonly jsTotalGzipKb: number
-    readonly mainEntryGzipKb: number
-    readonly largestChunkGzipKb: number
-  }
+  readonly baseline: Metrics
 }
 
 const budgetsPath = join(import.meta.dir, "budgets.json")
 const distDir = join(import.meta.dir, "../apps/web/dist/client")
 
-async function measure(): Promise<Budgets["baseline"]> {
+async function measure(): Promise<Metrics> {
   const paths: string[] = []
   const stack = [distDir]
   while (stack.length > 0) {
@@ -59,27 +53,28 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null
 }
 
-function toKbRecord(value: unknown, keys: readonly string[]): Record<string, number> | undefined {
+function toKbRecord(value: unknown): Metrics | undefined {
   if (!isRecord(value)) return undefined
-  const out: Record<string, number> = {}
-  for (const key of keys) {
-    const v = value[key]
-    if (typeof v !== "number") return undefined
-    out[key] = v
+  const { totalGzipKb, jsTotalGzipKb, mainEntryGzipKb, largestChunkGzipKb } = value
+  if (
+    typeof totalGzipKb !== "number" ||
+    typeof jsTotalGzipKb !== "number" ||
+    typeof mainEntryGzipKb !== "number" ||
+    typeof largestChunkGzipKb !== "number"
+  ) {
+    return undefined
   }
-  return out
+  return { totalGzipKb, jsTotalGzipKb, mainEntryGzipKb, largestChunkGzipKb }
 }
-
-const metricKeys = ["totalGzipKb", "jsTotalGzipKb", "mainEntryGzipKb", "largestChunkGzipKb"] as const
 
 async function main() {
   const write = process.argv.includes("--write")
   const raw: unknown = JSON.parse(await Bun.file(budgetsPath).text())
   if (!isRecord(raw)) throw new Error("budgets.json is not an object")
-  const absolute = toKbRecord(raw.absolute, metricKeys)
-  const baseline = toKbRecord(raw.baseline, metricKeys)
+  const absolute = toKbRecord(raw.absolute)
+  const baseline = toKbRecord(raw.baseline)
   const relativeRaw = isRecord(raw.relative) ? raw.relative : {}
-  const budgets = {
+  const budgets: Budgets = {
     absolute: absolute ?? { totalGzipKb: 0, jsTotalGzipKb: 0, mainEntryGzipKb: 0, largestChunkGzipKb: 0 },
     baseline: baseline ?? { totalGzipKb: 0, jsTotalGzipKb: 0, mainEntryGzipKb: 0, largestChunkGzipKb: 0 },
     relative: {
@@ -101,7 +96,7 @@ async function main() {
 
   console.log("Bundle budget (apps/web/dist/client, gzip)\n")
   let failed = false
-  for (const key of ["totalGzipKb", "jsTotalGzipKb", "mainEntryGzipKb", "largestChunkGzipKb"] as const) {
+  for (const key of metricKeys) {
     const value = current[key]
     const limit = budgets.absolute[key]
     const base = budgets.baseline[key]
