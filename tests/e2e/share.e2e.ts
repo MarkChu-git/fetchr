@@ -1,8 +1,5 @@
 import { expect, test, type APIRequestContext } from "@playwright/test"
 
-const WECHAT_UA =
-  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003237) NetType/WIFI Language/zh_CN"
-
 const decode = (value: string): string =>
   value.replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
 
@@ -30,8 +27,8 @@ const titleOf = (html: string): string | undefined => {
   return raw === undefined ? undefined : decode(raw)
 }
 
-async function page(request: APIRequestContext, path: string, headers?: Record<string, string>): Promise<{ html: string; tags: Meta[] }> {
-  const response = await request.get(path, headers === undefined ? {} : { headers })
+async function page(request: APIRequestContext, path: string): Promise<{ html: string; tags: Meta[] }> {
+  const response = await request.get(path)
   expect(response.status(), path).toBe(200)
   const html = await response.text()
   return { html, tags: metas(html) }
@@ -105,29 +102,6 @@ test("the head still links the favicon, the 32px icon and the apple touch icon",
 test("the icons are served as PNG at the sizes the page claims", async ({ request }) => {
   expect(await pngSize(request, "/favicon-32.png")).toEqual({ status: 200, type: "image/png", width: 32, height: 32 })
   expect(await pngSize(request, "/apple-touch-icon.png")).toEqual({ status: 200, type: "image/png", width: 180, height: 180 })
-})
-
-test("inside WeChat the first element of the body is an off-screen 600x600 square image", async ({ request, baseURL }) => {
-  const { html } = await page(request, "/", { "user-agent": WECHAT_UA })
-  const body = /<body[^>]*>\s*(<img\b[^>]*>)/.exec(html)?.[1]
-  expect(body, "the first element in <body> must be the square <img>").toBeDefined()
-  const tag = body ?? ""
-  expect(tag).toMatch(new RegExp(`src="${baseURL}/share/square\\.png\\?v=[0-9a-f]{8}"`))
-  expect(tag).toMatch(/width="600"/)
-  expect(tag).toMatch(/height="600"/)
-  expect(tag).toMatch(/aria-hidden="true"/)
-  expect(tag).toMatch(/alt=""/)
-  expect(tag).toMatch(/position:\s*absolute/)
-  expect(tag).toMatch(/left:\s*-9999px/)
-  expect(tag).not.toMatch(/display:\s*none/)
-  const src = /src="([^"]+)"/.exec(tag)?.[1] ?? ""
-  expect(await pngSize(request, src)).toEqual({ status: 200, type: "image/png", width: 600, height: 600 })
-})
-
-test("outside WeChat the square image is not in the page at all", async ({ request }) => {
-  const chrome = { "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/126.0.0.0 Safari/537.36" }
-  const pages = await Promise.all([page(request, "/"), page(request, "/", chrome)])
-  for (const { html } of pages) expect(html).not.toContain("square.png")
 })
 
 test("switching language in the browser does not ask the server for the share facts again", async ({ page: browser }) => {

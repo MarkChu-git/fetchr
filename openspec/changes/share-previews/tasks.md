@@ -19,9 +19,9 @@
 
 ## 4. 页面接入
 
-- [x] 4.1 新增 `apps/web/src/share-meta.ts`：`shareMeta({ locale, origin, pathname, assets })` 与 `isWeChatUserAgent(ua)`，只用 Web API。先写 `share-meta.test.ts`：中英文的 `title`、`og:*`、`twitter:card`；`og:url` 只有英文带 `?lang=en`；`og:image` 为 origin 加路径加 `?v=`；origin 为空时没有 `og:url` 与 `og:image*`，其余标签仍在；没有重复的 property 或 name；UA 判断用真实的 iOS、Android、桌面微信 UA 做正例，用 Safari、Chrome、QQ 浏览器和空串做反例。验证：`bun test apps/web/src/share-meta.test.ts` 与 `bun run check`（边界扫描）通过。
-- [x] 4.2 根路由接入。改动前对根路由的 `Route` 与 `RootDocument` 跑 GitNexus `impact` 并记录结果。新增 `createServerFn`（请求内用 `getRequestUrl()` 与 `getRequestHeader('user-agent')`，整个包 try/catch，失败返回 `{ origin: null, wechat: false }`）、根路由 loader 与 `staleTime: Infinity`；`head()` 用 `shareMeta` 输出标题与标签，保留现有三个图标链接。先在 `tests/e2e/share.e2e.ts` 写标签部分：`/` 与 `/?lang=en` 的 HTML 含绝对地址的 `og:image`，请求该地址得到 200、`image/png`、PNG 头为 1200×630；`og:locale`、`og:url`、`<title>` 与 spec 一致；`<head>` 仍有三个图标链接。验证：`bun run test:e2e` 的这部分通过，`bun run typecheck` 与 `bun run lint` 通过。
-- [x] 4.3 微信方图。在 `RootDocument` 里按 loader 的 `wechat` 在 `<body>` 第一个元素渲染屏外方图（design.md D9）。先在 `share.e2e.ts` 加用例：含 `MicroMessenger` 的 UA 请求 `/` 时，`<body>` 第一个元素是 `<img>`，`src` 指向 `/share/square.png?v=…`，600×600、绝对定位在屏外、`aria-hidden="true"`、`alt=""`；普通 UA 时 HTML 里没有它。验证：`bun run test:e2e` 与 `bun run verify:fast` 通过。
+- [x] 4.1 新增 `apps/web/src/share-meta.ts`：`shareMeta({ locale, origin, pathname, assets })`，只用 Web API。先写 `share-meta.test.ts`：中英文的 `title`、`og:*`、`twitter:card`；`og:url` 只有英文带 `?lang=en`；`og:image` 为 origin 加路径加 `?v=`；origin 为空时没有 `og:url` 与 `og:image*`，其余标签仍在；没有重复的 property 或 name。验证：`bun test apps/web/src/share-meta.test.ts` 与 `bun run check`（边界扫描）通过。
+- [x] 4.2 根路由接入。改动前对根路由的 `Route` 与 `RootDocument` 跑 GitNexus `impact` 并记录结果。新增 `createServerFn`（请求内用 `getRequestUrl()`，整个包 try/catch，失败返回 `{ origin: null }`）、根路由 loader 与 `staleTime: Infinity`；`head()` 用 `shareMeta` 输出标题与标签，保留现有三个图标链接。先在 `tests/e2e/share.e2e.ts` 写标签部分：`/` 与 `/?lang=en` 的 HTML 含绝对地址的 `og:image`，请求该地址得到 200、`image/png`、PNG 头为 1200×630；`og:locale`、`og:url`、`<title>` 与 spec 一致；`<head>` 仍有三个图标链接。验证：`bun run test:e2e` 的这部分通过，`bun run typecheck` 与 `bun run lint` 通过。
+- [x] 4.3 微信方图（已删除）。曾在 `RootDocument` 里按 loader 的 `wechat` 渲染屏外方图，真机验证无效后按 6.4 移除，经过见 design.md D9。
 
 ## 5. CI、预算与文档
 
@@ -37,4 +37,6 @@
 - [ ] 6.1 全仓验证：`bun run verify`、`bun run policy`、`bun run test:e2e`、`bun run generate:check`、`bun run bundle:check` 全部通过；GitNexus `detect_changes`（scope all）无意外影响面；运行 `graphify update .`。验证：以上输出的摘要写进 PR 描述。
 - [ ] 6.2 开 PR：分支 `feat/share-previews`，提交信息用 `feat:` 前缀。验证：CI 全绿（verify、performance、compatibility、preview、e2e、OSV、dependency-review）。
 - [ ] 6.3 真机验证（需要维护者在手机上做，步骤见 design.md 的 Migration Plan）。验证：PR 里有一条记录，写明站点能否在微信里打开；朋友圈预览的标题与缩略图（二维码进入与收藏进入各一次）；Telegram、Slack、iMessage、X 的 OG 预览；QQ 浏览器分享到微信好友的卡片。
-- [ ] 6.4 （条件）仅当 6.3 显示方图无效，且 design.md D9 的备选方式也无效时，删除微信方图：移除 `RootDocument` 里的屏外 `<img>`、loader 与 server fn 里的 `wechat` 字段、`isWeChatUserAgent` 及其测试、e2e 里的微信用例，并从 `share-previews` spec 删掉「微信内置浏览器里放一张屏外方图」一条。验证：`bun run verify` 与 `bun run test:e2e` 通过，`openspec validate share-previews --strict` 通过。
+  - 2026-10-08 已做：二维码进入 preview（workers.dev）→ 站点能在微信里打开，分享到朋友圈出现卡片，缩略图是微信默认的链接图标。未做：收藏进入、Telegram、Slack、iMessage、X 的 OG 预览、QQ 浏览器分享到微信好友的卡片。
+- [x] 6.4 （条件）仅当 6.3 显示方图无效，且 design.md D9 的备选方式也无效时，删除微信方图：移除 `RootDocument` 里的屏外 `<img>`、loader 与 server fn 里的 `wechat` 字段、`isWeChatUserAgent` 及其测试、e2e 里的微信用例，并从 `share-previews` spec 删掉「微信内置浏览器里放一张屏外方图」一条。验证：`bun run verify` 与 `bun run test:e2e` 通过，`openspec validate share-previews --strict` 通过。
+  - 2026-10-08 已执行。第二个条件（D9 的备选方式也无效）没有满足：备选没有试，按维护者的决定直接删除。已移除屏外 `<img>`、loader 与 server fn 的 `wechat` 字段、`isWeChatUserAgent` 及其测试、e2e 的微信用例、spec 里的对应需求。`square.png` 本身与它的生成、测试和 spec 条目还在，是否一并删除另行决定。

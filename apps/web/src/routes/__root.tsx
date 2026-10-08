@@ -2,7 +2,7 @@ import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
 import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeader, getRequestUrl } from "@tanstack/react-start/server"
+import { getRequestUrl } from "@tanstack/react-start/server"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
@@ -11,7 +11,7 @@ import "@fontsource/figtree/500.css"
 import "@fontsource/figtree/600.css"
 import { htmlLang, localeFromSearch, pageCopy } from "../i18n"
 import { shareAssets } from "../share-assets.gen"
-import { NO_REQUEST_FACTS, isWeChatUserAgent, readRequestFacts, shareMeta, squareImageSrc, type RequestFacts } from "../share-meta"
+import { NO_REQUEST_FACTS, readRequestFacts, shareMeta, type RequestFacts } from "../share-meta"
 import "../styles.css"
 
 /**
@@ -19,11 +19,11 @@ import "../styles.css"
  * inject it. `readRequestFacts` keeps a failure here from reaching the page.
  */
 const loadRequestFacts = createServerFn({ method: "GET" }).handler(
-  (): RequestFacts => readRequestFacts(() => ({ origin: getRequestUrl().origin, wechat: isWeChatUserAgent(getRequestHeader("user-agent")) })),
+  (): RequestFacts => readRequestFacts(() => ({ origin: getRequestUrl().origin })),
 )
 
 export const Route = createRootRoute({
-  // The origin and the user agent cannot change while the page is open, so they never go stale. The router keeps the root
+  // The origin cannot change while the page is open, so it never goes stale. The router keeps the root
   // match across navigations anyway; this keeps it from asking the server again if its defaults ever change.
   staleTime: Infinity,
   // A failed call, which can only happen over the network on the client, costs the page its image tags and nothing more.
@@ -67,8 +67,6 @@ export const Route = createRootRoute({
 function RootDocument({ children }: { readonly children: ReactNode }) {
   const searchStr = useRouterState({ select: (state) => state.location.searchStr })
   const lang = htmlLang(localeFromSearch(new URLSearchParams(searchStr).get("lang")))
-  const facts = Route.useLoaderData()
-  const square = facts.wechat ? squareImageSrc(facts.origin, shareAssets) : null
   return (
     <html lang={lang}>
       <head>
@@ -80,10 +78,6 @@ function RootDocument({ children }: { readonly children: ReactNode }) {
         ) : null}
       </head>
       <body>
-        {/* Inside WeChat only. A page shared to Moments gets a title and one small square picture, and WeChat may take that picture from the first large image it finds on the page. This one sits off screen rather than under display:none, because a hidden image does not count as visible. If checking on a real phone shows it does nothing, delete this block, the `wechat` fact and isWeChatUserAgent. */}
-        {square === null ? null : (
-          <img src={square} width={600} height={600} alt="" aria-hidden="true" style={{ position: "absolute", left: "-9999px", top: 0 }} />
-        )}
         {/* The paste form is interactive in the server HTML. Stop that submit before React attaches, or the browser navigates to ?url= and drops ?lang=. */}
         <script
           dangerouslySetInnerHTML={{

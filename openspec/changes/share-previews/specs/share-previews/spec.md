@@ -2,7 +2,7 @@
 
 ## Purpose
 
-规定站点页面在被分享时对外呈现的元数据：标题与描述、Open Graph 与 Twitter 标签、分享图的地址与可取性，以及微信内置浏览器里的方图，使链接在各平台的预览里有标题和图片。
+规定站点页面在被分享时对外呈现的元数据：标题与描述、Open Graph 与 Twitter 标签、分享图的地址与可取性，使链接在各平台的预览里有标题和图片。
 
 ## ADDED Requirements
 
@@ -59,23 +59,9 @@
 - **THEN** `og:image` 的 `v` 参数随之变化
 
 ### Requirement: 取不到请求信息时页面照常渲染
-服务端取当前请求的 origin 或 User-Agent 失败时，页面 SHALL 照常渲染：省略 `og:url`、`og:image` 及其附属标签，保留标题、描述、`og:title`、`og:description`、`og:type`、`og:site_name`、`og:locale` 与 `twitter:card`。页面 MUST NOT 输出相对路径的分享图地址，也 MUST NOT 向访客展示错误。
+服务端取当前请求的 origin 失败时，页面 SHALL 照常渲染：省略 `og:url`、`og:image` 及其附属标签，保留标题、描述、`og:title`、`og:description`、`og:type`、`og:site_name`、`og:locale` 与 `twitter:card`。页面 MUST NOT 输出相对路径的分享图地址，也 MUST NOT 向访客展示错误。
 
 #### Scenario: 取不到 origin
 - **WHEN** 服务端取不到当前请求的 origin
 - **THEN** 响应仍为 200，HTML 里没有 `og:url` 和 `og:image*`，页面内容完整
 
-#### Scenario: 取不到 User-Agent
-- **WHEN** 服务端取不到 User-Agent
-- **THEN** 页面按非微信浏览器处理，不输出微信方图
-
-### Requirement: 微信内置浏览器里放一张屏外方图
-当请求的 User-Agent 含 `MicroMessenger` 时，服务端渲染的 HTML SHALL 在 `<body>` 的第一个元素位置放一张 600×600 的方图 `<img>`，地址为带内容哈希的绝对地址。该图 SHALL 被挪出可视区域而不是用 `display: none` 隐藏，对辅助技术隐藏，`alt` 为空。其他 User-Agent 的 HTML MUST NOT 包含这张图。本需求是对微信默认抓图规则的试探：真机验证无效时，整条需求连同对应实现一并移除，不影响其余需求。
-
-#### Scenario: 微信 User-Agent
-- **WHEN** 以含 `MicroMessenger` 的 User-Agent 请求 `/`
-- **THEN** `<body>` 的第一个元素是 `<img>`，`src` 指向 `/share/square.png` 并带 `?v=`，宽高均为 600，样式为绝对定位且在屏幕外，`aria-hidden` 为 `true`，`alt` 为空
-
-#### Scenario: 普通浏览器
-- **WHEN** 以不含 `MicroMessenger` 的 User-Agent 请求 `/`
-- **THEN** HTML 里没有这张 `<img>`，浏览器不会请求 `square.png`

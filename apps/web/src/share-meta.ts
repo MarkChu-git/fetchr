@@ -1,6 +1,6 @@
 /**
- * What a page tells the outside world when its link is shared: the title, the description, the Open Graph and
- * Twitter tags, and whether the visitor is inside WeChat. Pure, and Web APIs only (this file ships in the Worker).
+ * What a page tells the outside world when its link is shared: the title, the description, and the Open Graph and
+ * Twitter tags. Pure, and Web APIs only (this file ships in the Worker).
  */
 import type { Locale, PageCopy } from "./i18n"
 
@@ -13,10 +13,9 @@ interface ShareImage {
 }
 
 /** The shape of the generated share-assets.gen.ts that this file reads. */
-export interface ShareImages {
+interface ShareImages {
   readonly ogZh: ShareImage
   readonly ogEn: ShareImage
-  readonly square: ShareImage
 }
 
 export type MetaTag =
@@ -67,23 +66,16 @@ export function shareMeta({ locale, copy, origin, pathname, images }: ShareMetaI
   return tags
 }
 
-/** The square image's address, for the picture WeChat's browser is shown. Null without an origin. */
-export function squareImageSrc(origin: string | null, images: ShareImages): string | null {
-  return origin === null ? null : imageUrl(origin, images.square)
-}
-
 export interface RequestFacts {
   readonly origin: string | null
-  readonly wechat: boolean
 }
 
-/** What a page knows when the request cannot be read: no address to build absolute URLs from, and not WeChat. */
-export const NO_REQUEST_FACTS: RequestFacts = { origin: null, wechat: false }
+/** What a page knows when the request cannot be read: no address to build absolute URLs from. */
+export const NO_REQUEST_FACTS: RequestFacts = { origin: null }
 
 /**
  * What the share tags need from the request. Share metadata must never take a page down, so if `read` throws
- * (no request in scope, an RPC that failed) the answer is no origin and not WeChat: the page loses its image
- * tags and nothing else.
+ * (no request in scope, an RPC that failed) the answer is no origin: the page loses its image tags and nothing else.
  */
 export function readRequestFacts(read: () => RequestFacts): RequestFacts {
   try {
@@ -91,9 +83,4 @@ export function readRequestFacts(read: () => RequestFacts): RequestFacts {
   } catch {
     return NO_REQUEST_FACTS
   }
-}
-
-/** True inside WeChat's in-app browser, on phones and desktop alike: every build puts MicroMessenger in the user agent. */
-export function isWeChatUserAgent(userAgent: string | null | undefined): boolean {
-  return /MicroMessenger/i.test(userAgent ?? "")
 }

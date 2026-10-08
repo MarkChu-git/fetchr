@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test"
 import { pageCopy, type Locale } from "./i18n"
 import { shareAssets } from "./share-assets.gen"
-import { isWeChatUserAgent, readRequestFacts, shareMeta, squareImageSrc, type MetaTag } from "./share-meta"
+import { readRequestFacts, shareMeta, type MetaTag } from "./share-meta"
 
 const ORIGIN = "https://fetchr.hanyang.app"
 
@@ -91,42 +91,16 @@ test("no tag name or property appears twice", () => {
   }
 })
 
-test("WeChat's own browsers are recognised and others are not", () => {
-  const wechat = [
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003237) NetType/WIFI Language/zh_CN",
-    "Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UP1A.231005.007; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/124.0.6367.113 Mobile Safari/537.36 XWEB/1220099 MMWEBSDK/20240404 MMWEBID/2315 MicroMessenger/8.0.49.2600(0x2800315F) WeChat/arm64 Weixin NetType/WIFI Language/zh_CN ABI/arm64",
-    "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/98.0.4758.102 Safari/537.36 MicroMessenger/7.0.20.1781(0x6700143B) NetType/WIFI WindowsWechat(0x6309080f)",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) MicroMessenger/6.8.0(0x16080000) MacWechat/3.8.7(0x13080710) NetType/WIFI WindowsWechat",
-  ]
-  const others = [
-    "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Linux; U; Android 13; zh-cn; M2102K1AC Build/TKQ1.220829.002) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/89.0.4389.116 MQQBrowser/13.9 Mobile Safari/537.36 COVC/046011",
-    "Twitterbot/1.0",
-    "",
-  ]
-  for (const ua of wechat) expect(isWeChatUserAgent(ua), ua).toBe(true)
-  for (const ua of others) expect(isWeChatUserAgent(ua), ua).toBe(false)
-  expect(isWeChatUserAgent(null)).toBe(false)
-  expect(isWeChatUserAgent(undefined)).toBe(false)
-})
-
-test("the square image address carries the content hash, and is null without an origin", () => {
-  expect(squareImageSrc(ORIGIN, shareAssets)).toBe(`${ORIGIN}/share/square.png?v=${shareAssets.square.version}`)
-  expect(squareImageSrc(null, shareAssets)).toBeNull()
-})
-
-test("request facts that cannot be read fall back to no origin and not WeChat, and the page still gets its tags", () => {
+test("request facts that cannot be read fall back to no origin, and the page still gets its tags", () => {
   const unreadable = readRequestFacts(() => {
     throw new Error("there is no request here")
   })
-  expect(unreadable).toEqual({ origin: null, wechat: false })
+  expect(unreadable).toEqual({ origin: null })
   const tags = shareMeta({ locale: "zh", copy: pageCopy("zh"), origin: unreadable.origin, pathname: "/", images: shareAssets })
   expect(titleOf(tags)).toBe(pageCopy("zh").title)
   expect(valueOf(tags, "og:image")).toBeUndefined()
-  expect(squareImageSrc(unreadable.origin, shareAssets)).toBeNull()
 })
 
 test("request facts that can be read are passed through untouched", () => {
-  expect(readRequestFacts(() => ({ origin: ORIGIN, wechat: true }))).toEqual({ origin: ORIGIN, wechat: true })
+  expect(readRequestFacts(() => ({ origin: ORIGIN }))).toEqual({ origin: ORIGIN })
 })
