@@ -112,7 +112,7 @@
 
 **D13 分享图按请求方选：认得出的爬虫拿宽图，其余拿方图**
 - 起因：2026-10-08 真机对照（见 Context）说明朋友圈缩略图是 `og:image` 居中裁成的方块。宽图 1200×630 裁出的中间 630 是个碎片（标志和标题偏左），方图 600×600 不受裁剪影响；而微信的抓取器认不出来（见 Context）。
-- 做法：`share-meta` 的 `isLinkPreviewCrawler(userAgent)` 用一个不区分大小写的名单判断请求方：facebookexternalhit、facebot、twitterbot、slackbot、telegrambot、whatsapp、discordbot、linkedinbot、applebot。已知爬虫得到当前语言的宽图、宽图的描述和 `summary_large_image`；其余请求，包括微信，得到 `square.png`、`Fetchr` 作 `og:image:alt` 和 `summary`。苹果信息据报道发的是旧版 Safari 的 UA，后面附着 `facebookexternalhit` 与 `Twitterbot`，所以也命中名单。根 loader 的 server fn 在请求内读 UA，结果放进 `RequestFacts.crawler`，并把 `Vary: User-Agent` 写进响应。
+- 做法：`share-meta` 的 `isLinkPreviewCrawler(userAgent)` 用一个不区分大小写的名单判断请求方：facebookexternalhit、facebot、twitterbot、slackbot、telegrambot、whatsapp、discordbot、linkedinbot、applebot。已知爬虫得到当前语言的宽图、宽图的描述和 `summary_large_image`；其余请求，包括微信，得到 `square.png`、`Fetchr` 作 `og:image:alt` 和 `summary`。苹果信息据报道发的是旧版 Safari 的 UA，后面附着 `facebookexternalhit` 与 `Twitterbot`，所以也命中名单。根 loader 的 server fn 在请求内读 UA，结果放进 `RequestFacts.crawler`，根路由的 `headers` 选项给每个文档响应加 `Vary: User-Agent`。第一版把 `Vary` 写在 loader 里，评审发现 404 页面拿不到它：框架在非 200 响应上丢掉 loader 里设的响应头，而 404 页面的标签同样随 UA 变，所以挪到了路由的 `headers`。Cloudflare 自己的缓存不按 `Vary` 分键，默认也不缓存 HTML，这个头是给其他代理和将来加 HTML 缓存规则的人看的：那条规则也得按 UA 分键。
 - 为什么「倒过来」：名单只放认得出的。认不出的请求方一律走默认，默认就是微信需要的方图，所以不用知道微信的抓取器长什么样。名单不全或某平台改了 UA，它退回方图：预览小一点，不会坏。
 - 替代：
   - 重画宽图，让中间 630 自成一体：要重新设计并重新批准版式，放弃现在的产品卡，仍是一张图管所有平台。
@@ -124,7 +124,7 @@
 
 **测试策略**（任务拆分见 tasks.md）
 - 单元：`share-meta`（中英文、origin 为空、无重复标签、按请求方选图、`isLinkPreviewCrawler`）、量化器（锁色、不超过 64 色、PNG 结构与 CRC、解码回读）、字体（缺字、哈希不符、锁文件格式）、输入哈希与 `--check`、已提交 PNG 的尺寸与版本哈希、`logo.svg` 与 `favicon.svg` 几何一致与对比度。
-- e2e（Playwright，本地 preview，离线）：已知爬虫的 `/` 与 `/?lang=en` 拿宽图，默认 UA 与微信 UA 拿方图；`og:image` 都是绝对地址且可取、尺寸与声明一致；响应的 `Vary` 含 `User-Agent`。
+- e2e（Playwright，本地 preview，离线）：已知爬虫的 `/` 与 `/?lang=en` 拿宽图，默认 UA 与微信 UA 拿方图；`og:image` 都是绝对地址且可取、尺寸与声明一致；每个文档响应（含不存在的路径）的 `Vary` 含 `User-Agent`。
 - 真机（只能人来做）：见 Migration Plan。
 
 ## Risks / Trade-offs

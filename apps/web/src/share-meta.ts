@@ -48,8 +48,8 @@ const imageUrl = (origin: string, image: ShareImage): string => `${origin}${imag
  *
  * The share image depends on who asks. A crawler that draws wide link cards gets the 1200x630 card of the page's
  * language. Anyone else gets the 600x600 square. That default is for WeChat: it crops the og:image of a Moments
- * card to a centred square, which leaves a square untouched, and its fetcher does not name itself, so it cannot be
- * picked out and can only be served by default.
+ * card to a centred square, which leaves a square untouched, and no user agent is documented for its fetcher, so it
+ * is served by default instead of being picked out.
  */
 export function shareMeta({ locale, copy, origin, crawler, pathname, images }: ShareMetaInput): MetaTag[] {
   const wide = locale === "en" ? images.ogEn : images.ogZh
@@ -103,8 +103,9 @@ export function readRequestFacts(read: () => RequestFacts): RequestFacts {
 /**
  * The crawlers that build link previews and draw wide cards, by the name each puts in its user agent. Apple
  * Messages is reported to send an old Safari string with `facebookexternalhit` and `Twitterbot` appended, so it
- * matches too. WeChat is not here and cannot be: its fetcher does not say who it is, and the requests that look
- * like it come with ordinary phone and desktop browsers' strings. Whatever is not on this list gets the square.
+ * matches too. WeChat is not here: no user agent is documented for its fetcher, and one report says it sends
+ * ordinary phone and desktop browser strings, so it is left to the default. Whatever is not on this list gets the
+ * square. To show another platform the wide card, add its name here and to the test of the same names.
  */
 const LINK_PREVIEW_CRAWLERS = /facebookexternalhit|facebot|twitterbot|slackbot|telegrambot|whatsapp|discordbot|linkedinbot|applebot/i
 

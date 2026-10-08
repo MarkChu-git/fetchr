@@ -71,7 +71,7 @@
 - **THEN** 两份标签除 `og:image`、`og:image:width`、`og:image:height`、`og:image:alt` 与 `twitter:card` 之外完全相同
 
 #### Scenario: 缓存按 UA 区分
-- **WHEN** 请求任一页面
+- **WHEN** 请求任一页面，包括不存在的路径
 - **THEN** 响应的 `Vary` 包含 `User-Agent`
 
 ### Requirement: 分享图可被抓取且地址带内容哈希

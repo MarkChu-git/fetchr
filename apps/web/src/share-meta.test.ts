@@ -147,8 +147,16 @@ const CRAWLERS = [
   "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_1) AppleWebKit/601.2.4 (KHTML, like Gecko) Version/9.0.1 Safari/601.2.4 facebookexternalhit/1.1 Facebot Twitterbot/1.0",
 ]
 
+/** Every name the list is meant to recognise. Drop one from the list and its case below goes red. */
+const CRAWLER_NAMES = ["facebookexternalhit", "facebot", "twitterbot", "slackbot", "telegrambot", "whatsapp", "discordbot", "linkedinbot", "applebot"]
+
 const NOT_CRAWLERS = [
-  // WeChat's in-app browser. Its link fetcher does not name itself at all, so it lands here as well.
+  // Other crawlers and clients that are not on the list: they get the square.
+  "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
+  "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+  "curl/8.7.1",
+  "Python-urllib/3.14",
+  // WeChat's in-app browser. No user agent is documented for its link fetcher, so that lands here as well.
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003231) NetType/WIFI Language/zh_CN",
   "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36 XWEB/1220133 MMWEBSDK/20240404 MicroMessenger/8.0.49",
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
@@ -159,7 +167,15 @@ test("the crawlers that draw wide link cards are recognised by their user agent"
   for (const userAgent of CRAWLERS) expect(isLinkPreviewCrawler(userAgent), userAgent).toBe(true)
 })
 
-test("browsers, WeChat and a missing user agent are not crawlers", () => {
+test("each listed crawler name is recognised on its own, in any letter case", () => {
+  for (const name of CRAWLER_NAMES) {
+    for (const userAgent of [`${name}/1.0`, `Mozilla/5.0 (compatible; ${name.toUpperCase()}/2.0)`]) {
+      expect(isLinkPreviewCrawler(userAgent), userAgent).toBe(true)
+    }
+  }
+})
+
+test("other crawlers, browsers, WeChat and a missing user agent are not link-preview crawlers", () => {
   for (const userAgent of NOT_CRAWLERS) expect(isLinkPreviewCrawler(userAgent), userAgent).toBe(false)
   for (const missing of [null, undefined, ""]) expect(isLinkPreviewCrawler(missing), String(missing)).toBe(false)
 })

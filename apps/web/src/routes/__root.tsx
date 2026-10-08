@@ -2,7 +2,7 @@ import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
 import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestHeader, getRequestUrl, setResponseHeader } from "@tanstack/react-start/server"
+import { getRequestHeader, getRequestUrl } from "@tanstack/react-start/server"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
@@ -20,15 +20,15 @@ import "../styles.css"
  */
 const loadRequestFacts = createServerFn({ method: "GET" }).handler(
   (): RequestFacts =>
-    readRequestFacts(() => {
-      const facts = { origin: getRequestUrl().origin, crawler: isLinkPreviewCrawler(getRequestHeader("user-agent")) }
-      // The share image now depends on the user agent, so a cache in front of the Worker has to key on it too.
-      setResponseHeader("vary", "User-Agent")
-      return facts
-    }),
+    readRequestFacts(() => ({ origin: getRequestUrl().origin, crawler: isLinkPreviewCrawler(getRequestHeader("user-agent")) })),
 )
 
 export const Route = createRootRoute({
+  // The share image depends on the user agent, so every document answer says so, the not-found page included. A header
+  // set from the loader would be lost on a non-200 answer; this one is not. Cloudflare's own cache does not key on Vary
+  // and does not cache HTML unless a rule says so, so this is for other proxies, and for whoever adds such a rule:
+  // it has to key on the user agent too.
+  headers: () => ({ vary: "User-Agent" }),
   // The origin and the user agent cannot change while the page is open, so they never go stale. The router keeps the root
   // match across navigations anyway; this keeps it from asking the server again if its defaults ever change.
   staleTime: Infinity,

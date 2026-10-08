@@ -29,7 +29,7 @@ const titleOf = (html: string): string | undefined => {
 
 /** A crawler that draws wide link cards. */
 const CRAWLER = "Twitterbot/1.0"
-/** WeChat's in-app browser. Its link fetcher does not name itself, so the server cannot tell it from this or any other browser. */
+/** WeChat's in-app browser. No user agent is documented for its link fetcher, so the server cannot count on telling it from this or any other browser. */
 const WECHAT =
   "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003231) NetType/WIFI Language/zh_CN"
 
@@ -101,10 +101,13 @@ test("everyone else, WeChat's browser included, gets the square share image and 
   )
 })
 
-test("the page tells caches that its share tags depend on the user agent", async ({ request }) => {
-  const agents = [undefined, CRAWLER]
-  const responses = await Promise.all(agents.map((userAgent) => request.get("/", asAgent(userAgent))))
-  responses.forEach((response, i) => expect(response.headers()["vary"] ?? "", agents[i] ?? "the default client").toMatch(/user-agent/i))
+test("every document answer tells caches that it depends on the user agent, the not-found page included", async ({ request }) => {
+  await Promise.all(
+    visitsOf([undefined, CRAWLER], ["/", "/?lang=en", "/terms", "/no-such-page"]).map(async ({ userAgent, path }) => {
+      const response = await request.get(path, asAgent(userAgent))
+      expect(response.headers()["vary"] ?? "", `${path} as ${userAgent ?? "the default client"}`).toMatch(/user-agent/i)
+    }),
+  )
 })
 
 test("the terms page keeps the site title and carries its own path in og:url", async ({ request, baseURL }) => {

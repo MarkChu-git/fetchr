@@ -10,7 +10,7 @@
 
 - 新增构建时生成管线：用 Satori 加 `@resvg/resvg-wasm` 渲染 `og-zh.png`、`og-en.png`（1200×630）和 `square.png`（600×600），量化为索引色 PNG（不超过 64 色，锁定品牌色），连同生成的 `share-assets.gen.ts` 一起提交。生成器放在 `apps/web/scripts/og/`，不进 Worker。
 - 根路由输出 `og:*` 与 `twitter:card`，`<title>` 改为带语义的中英文标题。`og:image` 与 `og:url` 用绝对地址，origin 取自当前请求，图片地址带内容哈希 `?v=`。
-- 分享图按请求方选择：已知的链接预览爬虫（Facebook、X、Slack、Telegram、WhatsApp、Discord、LinkedIn、Apple）得到宽图，其余请求，包括微信，得到 `square.png`，响应带 `Vary: User-Agent`。微信的抓取器不报名字，认不出来，只能靠默认；方图不受朋友圈把图居中裁成方形的影响。
+- 分享图按请求方选择：已知的链接预览爬虫（Facebook、X、Slack、Telegram、WhatsApp、Discord、LinkedIn、Apple）得到宽图，其余请求，包括微信，得到 `square.png`，响应带 `Vary: User-Agent`。微信的抓取器没有公开的 UA，认不出来，只能靠默认；方图不受朋友圈把图居中裁成方形的影响。
 - 新 logo：F 加橙色圆点（`#e9592a`）。新增 `logo.svg`，替换 `favicon.svg`（深色模式反相）、`favicon-32.png`、`apple-touch-icon.png`。
 - `i18n.ts` 新增 `title`、`shareHeadline`、`shareImageAlt`；分享图里的标签、按钮、平台名直接取自现有的 `pageCopy`，和真实界面保持一致。
 - `generate` 与 `generate:check` 覆盖分享图和图标 PNG；`bundle:check` 基线按「有意成本」上调；README（中英）、AGENTS.md、`docs/ci-cd.md` 补说明。
@@ -36,7 +36,7 @@
   - Worker 里实时渲染：resvg 的 wasm 约 2.5 MB，加上 satori 与 CJK 字体，Worker 包体（现约 0.9 MB gzip）要翻倍以上；workerd 不允许运行时编译 wasm；收益只有「可动态」，而站点没有 per-post 页面。
   - Vite 插件在 build 时生成、不提交 PNG：往已经很重的 Vite 配置里再加自定义插件，构建变慢，PR 里看不到图。
   - 微信 JS-SDK：要备案域名、认证公众号和签名服务，当前都没有。
-  - 识别微信再给它换图：微信的抓取器不报名字，认不出来；所以改为认得出的爬虫拿宽图，其余拿方图。
+  - 识别微信再给它换图：微信的抓取器没有公开的 UA，认不出来；所以改为认得出的爬虫拿宽图，其余拿方图。
   - 页内分享按钮（`navigator.share`）：真机对照里浏览器自带的分享按钮效果相同，不是必要条件。
   - 重画宽图让中间 630 自成一体：要重新设计并批准版式，放弃现在的产品卡；已有的方图可以直接用。
 - 风险：生成器跨 macOS 与 Linux 的字节一致性未验证（CI 只比输入哈希）；新依赖要过 OSV 与 dependency-review。
