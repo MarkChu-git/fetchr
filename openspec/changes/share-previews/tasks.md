@@ -22,6 +22,7 @@
 - [x] 4.1 新增 `apps/web/src/share-meta.ts`：`shareMeta({ locale, origin, pathname, assets })`，只用 Web API。先写 `share-meta.test.ts`：中英文的 `title`、`og:*`、`twitter:card`；`og:url` 只有英文带 `?lang=en`；`og:image` 为 origin 加路径加 `?v=`；origin 为空时没有 `og:url` 与 `og:image*`，其余标签仍在；没有重复的 property 或 name。验证：`bun test apps/web/src/share-meta.test.ts` 与 `bun run check`（边界扫描）通过。
 - [x] 4.2 根路由接入。改动前对根路由的 `Route` 与 `RootDocument` 跑 GitNexus `impact` 并记录结果。新增 `createServerFn`（请求内用 `getRequestUrl()`，整个包 try/catch，失败返回 `{ origin: null }`）、根路由 loader 与 `staleTime: Infinity`；`head()` 用 `shareMeta` 输出标题与标签，保留现有三个图标链接。先在 `tests/e2e/share.e2e.ts` 写标签部分：`/` 与 `/?lang=en` 的 HTML 含绝对地址的 `og:image`，请求该地址得到 200、`image/png`、PNG 头为 1200×630；`og:locale`、`og:url`、`<title>` 与 spec 一致；`<head>` 仍有三个图标链接。验证：`bun run test:e2e` 的这部分通过，`bun run typecheck` 与 `bun run lint` 通过。
 - [x] 4.3 微信方图（已删除）。曾在 `RootDocument` 里按 loader 的 `wechat` 渲染屏外方图，真机验证无效后按 6.4 移除，经过见 design.md D9。
+- [x] 4.4 按请求方选分享图（design.md D13）。改动前对 `shareMeta`、`readRequestFacts`、`loadRequestFacts` 跑 GitNexus `impact`：2026-10-08 均为 LOW，唯一调用方是根路由的 `head` 与 `loader`；`NO_REQUEST_FACTS` 与 `Route` 返回 UNKNOWN，用文本搜索确认只在 `share-meta.ts`、根路由与测试里用到。先在 `share-meta.test.ts` 写测试：`isLinkPreviewCrawler` 认得名单里的 UA（含苹果信息那一串），不认微信内置浏览器、普通浏览器和空 UA；已知爬虫得到当前语言的宽图与 `summary_large_image`，其余请求得到 `square.png`、宽高 600、`Fetchr` 作 alt 与 `summary`；两者只差图片相关标签；读不到请求时是 `{ origin: null, crawler: false }`。再在 `tests/e2e/share.e2e.ts` 写：`Twitterbot` 的 UA 得宽图，默认 UA 与微信 UA 得可取的方图，响应的 `Vary` 含 `User-Agent`（去掉 `setResponseHeader` 这一行时该测试变红，已验证）。实现：`share-meta.ts` 加 `crawler` 事实与选图，根 loader 的 server fn 读 UA 并写 `Vary`。验证：`bun run verify:fast`、`bun run test:e2e` 通过。
 
 ## 5. CI、预算与文档
 
@@ -38,5 +39,6 @@
 - [ ] 6.2 开 PR：分支 `feat/share-previews`，提交信息用 `feat:` 前缀。验证：CI 全绿（verify、performance、compatibility、preview、e2e、OSV、dependency-review）。
 - [ ] 6.3 真机验证（需要维护者在手机上做，步骤见 design.md 的 Migration Plan）。验证：PR 里有一条记录，写明站点能否在微信里打开；朋友圈预览的标题与缩略图（二维码进入与收藏进入各一次）；Telegram、Slack、iMessage、X 的 OG 预览；QQ 浏览器分享到微信好友的卡片。
   - 2026-10-08 已做：二维码进入 preview（workers.dev）→ 站点能在微信里打开，分享到朋友圈出现卡片，缩略图是微信默认的链接图标。未做：收藏进入、Telegram、Slack、iMessage、X 的 OG 预览、QQ 浏览器分享到微信好友的卡片。
+  - 2026-10-08 补充（用朋友的博客 buxx.me/blog/godmother 做的另一轮对照）：微信内置浏览器里分享只出纯链接；在 Safari 或 Chrome 里用页面按钮或浏览器自带的分享，经微信到朋友圈，出卡片，缩略图是 `og:image` 居中裁成的方块。由此得到 D13。新的真机步骤见 design.md Migration Plan 第 3 步：用 Safari 或 Chrome 把 preview 地址分享到朋友圈，确认缩略图是 `square.png`；上线后在生产域名上再做一次。
 - [x] 6.4 （条件）仅当 6.3 显示方图无效，且 design.md D9 的备选方式也无效时，删除微信方图：移除 `RootDocument` 里的屏外 `<img>`、loader 与 server fn 里的 `wechat` 字段、`isWeChatUserAgent` 及其测试、e2e 里的微信用例，并从 `share-previews` spec 删掉「微信内置浏览器里放一张屏外方图」一条。验证：`bun run verify` 与 `bun run test:e2e` 通过，`openspec validate share-previews --strict` 通过。
   - 2026-10-08 已执行。第二个条件（D9 的备选方式也无效）没有满足：备选没有试，按维护者的决定直接删除。已移除屏外 `<img>`、loader 与 server fn 的 `wechat` 字段、`isWeChatUserAgent` 及其测试、e2e 的微信用例、spec 里的对应需求。`square.png` 本身与它的生成、测试和 spec 条目还在，是否一并删除另行决定。

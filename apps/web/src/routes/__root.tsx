@@ -2,7 +2,7 @@ import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
 import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
 import { createServerFn } from "@tanstack/react-start"
-import { getRequestUrl } from "@tanstack/react-start/server"
+import { getRequestHeader, getRequestUrl, setResponseHeader } from "@tanstack/react-start/server"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
@@ -11,7 +11,7 @@ import "@fontsource/figtree/500.css"
 import "@fontsource/figtree/600.css"
 import { htmlLang, localeFromSearch, pageCopy } from "../i18n"
 import { shareAssets } from "../share-assets.gen"
-import { NO_REQUEST_FACTS, readRequestFacts, shareMeta, type RequestFacts } from "../share-meta"
+import { NO_REQUEST_FACTS, isLinkPreviewCrawler, readRequestFacts, shareMeta, type RequestFacts } from "../share-meta"
 import "../styles.css"
 
 /**
@@ -19,11 +19,17 @@ import "../styles.css"
  * inject it. `readRequestFacts` keeps a failure here from reaching the page.
  */
 const loadRequestFacts = createServerFn({ method: "GET" }).handler(
-  (): RequestFacts => readRequestFacts(() => ({ origin: getRequestUrl().origin })),
+  (): RequestFacts =>
+    readRequestFacts(() => {
+      const facts = { origin: getRequestUrl().origin, crawler: isLinkPreviewCrawler(getRequestHeader("user-agent")) }
+      // The share image now depends on the user agent, so a cache in front of the Worker has to key on it too.
+      setResponseHeader("vary", "User-Agent")
+      return facts
+    }),
 )
 
 export const Route = createRootRoute({
-  // The origin cannot change while the page is open, so it never goes stale. The router keeps the root
+  // The origin and the user agent cannot change while the page is open, so they never go stale. The router keeps the root
   // match across navigations anyway; this keeps it from asking the server again if its defaults ever change.
   staleTime: Infinity,
   // A failed call, which can only happen over the network on the client, costs the page its image tags and nothing more.
@@ -49,6 +55,7 @@ export const Route = createRootRoute({
           locale,
           copy: pageCopy(locale),
           origin: loaderData?.origin ?? null,
+          crawler: loaderData?.crawler ?? false,
           pathname: matches.at(-1)?.pathname ?? "/",
           images: shareAssets,
         }),

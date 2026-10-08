@@ -150,6 +150,8 @@ bun run --cwd apps/web og:fonts            # 新增了字符时，补取需要�
 
 下面这些是生成出来的文件，不要手改：`apps/web/public/share/` 下的 `og-zh.png`、`og-en.png` 和 `square.png`，`apps/web/public/` 下的 `favicon-32.png` 与 `apple-touch-icon.png`，以及 `apps/web/src/share-assets.gen.ts`（它记着每张图的内容哈希，图片 URL 里的 `?v=` 就是它）。改了文案、logo 或模板之后，运行 `bun run generate` 并提交结果。
 
+一个请求拿到哪张图，看它的 `User-Agent`。会画宽卡片的链接预览爬虫（Facebook、X、Slack、Telegram、WhatsApp、Discord、LinkedIn 和 Apple）拿当前语言的 1200×630 宽图，其余请求一律拿 `square.png`。这个默认是为微信留的：朋友圈卡片会把图居中裁成方形，方图不受影响；而微信的抓取器不报名字，认不出来，只能靠默认。名单是 `apps/web/src/share-meta.ts` 里的 `LINK_PREVIEW_CRAWLERS`，页面的响应带 `Vary: User-Agent`。
+
 中文用 Noto Sans SC，许可证是 SIL Open Font License 1.1。卡片用到的切片随仓库提交，放在 `apps/web/scripts/og/fonts/`，旁边有 `OFL.txt` 和记录校验和的 `fonts.lock.json`。生成器、渲染库和这些字体都只用于构建：边界扫描（`bun run arch`）会拒绝交付代码引用它们，它们也不会进入 `dist`。
 
 ## 配置

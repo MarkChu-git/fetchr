@@ -21,7 +21,9 @@
 - 没接 JS-SDK 时微信的默认行为，开发者实测互相矛盾：[2019](https://www.cnblogs.com/rgyj/p/11460251.html) 在朋友圈没测到缩略图；[2020](https://juejin.cn/post/6844904105375170573) 与 [2023](https://m.okjike.com/originalPosts/64d7665a96f1897a9e1a4fad) 说会取 `<title>` 加页面里第一张 ≥300×300 的可见图；[2022](https://juejin.cn/post/7103445901892386846) 说点聊天里的纯链接进页面再分享只会发出链接，二维码或收藏进入才出卡片。
 - Open Graph：[2024 年一篇](https://feng.moe/posts/202407-pages-share-and-open-graph)说内置浏览器不读 OG，但 iOS Safari 系统分享会带 OG 到微信好友；[另一篇](https://juejin.cn/post/7517486807892033588)说从 QQ 浏览器分享到微信好友按 OG 生成卡片，朋友圈没测。
 - 2026-10-08 补充：[腾讯云上一篇](https://developer.cloud.tencent.com/article/1928547)的作者在微信里试了好几次隐藏图片，没有成功，并认为「取第一张图」是 QQ 的旧逻辑；[V2EX 2023 年的讨论](https://www.v2ex.com/t/961962)里没有一个验证过的免 JS-SDK 办法，唯一明确有好卡片的例子（豆瓣）在微信 UA 下加载的是 JS-SDK。
-- 结论：方图是赌注，真机验证没有生效（见 D9）；OG 图对其余平台与 QQ 浏览器这类接了微信 SDK 的 App 有效。
+- 2026-10-08 真机对照（维护者在手机上做）：朋友的个人博客（Astro 站点，没有 JS-SDK）在微信内置浏览器里分享到朋友圈，只出纯链接；在 Safari 或 Chrome 里分享（页面里的分享按钮与浏览器自带的分享按钮效果相同）→ 微信 → 朋友圈，出卡片，缩略图是页面 `og:image` 居中裁成 630×630 的方块，与 1200×630 原图的 x=285..915 逐处吻合（标题的「记」只剩右半，摘要从句中开始，日期只剩尾巴）。所以缩略图走的是系统分享面板这条路，它读 `og:image`；内置浏览器这条路没有 JS-SDK 就出不了。页内分享按钮不是必要条件，那位朋友的按钮只是 `navigator.share({ title, url })`，检测不到该接口就隐藏。
+- 微信抓取器的 UA：没有官方说明；常见爬虫 UA 名单（[monperrus/crawler-user-agents](https://github.com/monperrus/crawler-user-agents)）里没有它；[V2EX 2023 年一帖](https://www.v2ex.com/t/968970)说微信抓链接时来自腾讯云 IP，UA 冒充各种手机和电脑，不一定带 MicroMessenger（一个人的观察，未验证）。所以认不出它，没法「识别微信再换图」。
+- 结论：内置浏览器那条路出不了缩略图（D9 的方图没有生效）；系统分享面板那条路读 `og:image` 并居中裁成方形。认不出微信，就倒过来：认得出的爬虫拿宽图，其余请求拿方图（D13）。OG 图对其余平台与 QQ 浏览器这类接了微信 SDK 的 App 有效。
 
 **探针结果**（Bun 1.4.2、`satori@0.35.0`、`@resvg/resvg-wasm@2.6.2`，临时目录，未改仓库）
 - 导入约 30 ms，wasm 初始化约 5 ms，单张图 20–110 ms。两个独立进程渲染的 PNG 字节完全一致（同一台机器）。
@@ -81,8 +83,8 @@
 
 **D8 页面接入：纯函数 `share-meta.ts` + 根路由 loader**
 - `apps/web/src/share-meta.ts`（只用 Web API）输入语言、origin、路径与 `share-assets.gen.ts` 的图片信息，输出 `title`、`description` 与全部 `og:*`、`twitter:card` 标签。所有对外文案在一处。
-- 根路由新增 loader，调用一个 `createServerFn`，在请求内用 `getRequestUrl()`，返回 `{ origin }`。TanStack Start 在服务端渲染时直接执行它，loader 数据自动 dehydrate 到客户端，水合一致。根路由设 `staleTime: Infinity`。实测默认设置下语言切换和客户端跳转也不会重新请求（根 match 在跳转间保留），所以它只是兜底；端到端测试守的是行为，即水合之后没有 `_serverFn` 请求（让 loader 重跑时该测试会变红，已验证）。
-- 整个 server fn 包 try/catch，失败返回 `{ origin: null }`；`origin` 为空时 `share-meta` 省略 `og:url` 与 `og:image*`。
+- 根路由新增 loader，调用一个 `createServerFn`，在请求内用 `getRequestUrl()` 与 `getRequestHeader("user-agent")`，返回 `{ origin, crawler }`（`crawler` 见 D13）。TanStack Start 在服务端渲染时直接执行它，loader 数据自动 dehydrate 到客户端，水合一致。根路由设 `staleTime: Infinity`。实测默认设置下语言切换和客户端跳转也不会重新请求（根 match 在跳转间保留），所以它只是兜底；端到端测试守的是行为，即水合之后没有 `_serverFn` 请求（让 loader 重跑时该测试会变红，已验证）。
+- 整个 server fn 包 try/catch，失败返回 `{ origin: null, crawler: false }`；`origin` 为空时 `share-meta` 省略 `og:url` 与 `og:image*`。
 - 不写死域名：README 有一键部署按钮，fork 与 preview 的域名都不同。替代：`VITE_SITE_URL`（构建期常量，对 fork 与 preview 不对）；相对路径（爬虫不可靠）。
 - 请求信息只在请求内读取，不放模块作用域（Workers 上 env 与请求按次注入）。
 
@@ -90,7 +92,7 @@
 - 做法：仅当 UA 含 `MicroMessenger` 时，`RootDocument` 在 `<body>` 第一个元素渲染一张 600×600 的屏外 `<img>`（`position: absolute; left: -9999px`），赌微信取页面第一张大图作朋友圈缩略图。
 - 2026-10-08 真机验证：用二维码打开 PR 的 preview，在微信内置浏览器里分享到朋友圈。站点能打开，卡片出现，缩略图框里是微信默认的链接图标，不是方图，也不是 favicon 或 OG 图。方图没有生效，按 tasks 6.4 删除。
 - 没有试的：收藏进入；原定的备选（`visibility: hidden` 或 `clip` 的隐藏方式，`<meta itemprop="image">`）；留在视口内但透明的写法。决定直接删除，因为没找到免 JS-SDK 指定缩略图的可靠资料（见上），而能控制缩略图的 JS-SDK 是本变更的 Non-Goal。
-- 以后要再试，只动 `RootDocument` 里的一块和 loader 的 `wechat` 字段，其余不受影响。删除前的实现在 git 历史里。
+- 以后要再试，只动 `RootDocument` 里的一块，并在 loader 里重新加一个按 UA 判断的字段（现在那里是 D13 的 `crawler`），其余不受影响。删除前的实现在 git 历史里（`046eb15` 之前）。方图后来改走 `og:image`，见 D13。
 
 **D10 文案**
 
@@ -108,9 +110,21 @@
 **D12 `share-assets.gen.ts` 的形状**
 - 导出常量对象：`inputsHash`，以及 `ogZh`、`ogEn`、`square`，每项含 `path`、`version`（内容 sha256 的前 8 位）、`width`、`height`。`share-meta` 用 `path` 加 `?v=version` 拼地址。文件头注明由生成器产出、不要手改，沿用 `routeTree.gen.ts` 的惯例。
 
+**D13 分享图按请求方选：认得出的爬虫拿宽图，其余拿方图**
+- 起因：2026-10-08 真机对照（见 Context）说明朋友圈缩略图是 `og:image` 居中裁成的方块。宽图 1200×630 裁出的中间 630 是个碎片（标志和标题偏左），方图 600×600 不受裁剪影响；而微信的抓取器认不出来（见 Context）。
+- 做法：`share-meta` 的 `isLinkPreviewCrawler(userAgent)` 用一个不区分大小写的名单判断请求方：facebookexternalhit、facebot、twitterbot、slackbot、telegrambot、whatsapp、discordbot、linkedinbot、applebot。已知爬虫得到当前语言的宽图、宽图的描述和 `summary_large_image`；其余请求，包括微信，得到 `square.png`、`Fetchr` 作 `og:image:alt` 和 `summary`。苹果信息据报道发的是旧版 Safari 的 UA，后面附着 `facebookexternalhit` 与 `Twitterbot`，所以也命中名单。根 loader 的 server fn 在请求内读 UA，结果放进 `RequestFacts.crawler`，并把 `Vary: User-Agent` 写进响应。
+- 为什么「倒过来」：名单只放认得出的。认不出的请求方一律走默认，默认就是微信需要的方图，所以不用知道微信的抓取器长什么样。名单不全或某平台改了 UA，它退回方图：预览小一点，不会坏。
+- 替代：
+  - 重画宽图，让中间 630 自成一体：要重新设计并重新批准版式，放弃现在的产品卡，仍是一张图管所有平台。
+  - 所有平台都用方图：最简单，但 X、Telegram、Slack 这类大卡片平台上图小。
+  - 识别微信再换图：识别不了。
+  - 页内分享按钮（`navigator.share`）：浏览器自带的分享按钮效果相同，按钮不是必要条件，也进不了微信内置浏览器。
+- 代价与风险：多一份要维护的 UA 名单；同一个网址按请求方返回不同的 `og:image`，各平台对此有没有限制，没有专门查证。应对：只有图片相关标签和 `twitter:card` 不同，其余完全相同（有测试）；响应带 `Vary: User-Agent`。
+- 解决不了的：别人在微信聊天里点链接进来是内置浏览器，只能分享出纯链接，要先用 Safari 或 Chrome 打开再分享。这需要 JS-SDK（Non-Goal）。
+
 **测试策略**（任务拆分见 tasks.md）
-- 单元：`share-meta`（中英文、origin 为空、无重复标签）、量化器（锁色、不超过 64 色、PNG 结构与 CRC、解码回读）、字体（缺字、哈希不符、锁文件格式）、输入哈希与 `--check`、已提交 PNG 的尺寸与版本哈希、`logo.svg` 与 `favicon.svg` 几何一致与对比度。
-- e2e（Playwright，本地 preview，离线）：`/` 与 `/?lang=en` 的 `og:image` 为绝对地址且可取、尺寸正确。
+- 单元：`share-meta`（中英文、origin 为空、无重复标签、按请求方选图、`isLinkPreviewCrawler`）、量化器（锁色、不超过 64 色、PNG 结构与 CRC、解码回读）、字体（缺字、哈希不符、锁文件格式）、输入哈希与 `--check`、已提交 PNG 的尺寸与版本哈希、`logo.svg` 与 `favicon.svg` 几何一致与对比度。
+- e2e（Playwright，本地 preview，离线）：已知爬虫的 `/` 与 `/?lang=en` 拿宽图，默认 UA 与微信 UA 拿方图；`og:image` 都是绝对地址且可取、尺寸与声明一致；响应的 `Vary` 含 `User-Agent`。
 - 真机（只能人来做）：见 Migration Plan。
 
 ## Risks / Trade-offs
@@ -121,6 +135,8 @@
 - [新依赖的漏洞或许可证] → 仅 devDependencies、仅构建期；PR 上过 OSV 与 dependency-review；MPL-2.0 的代码不随产物分发。
 - [字体切片约 630 KB 进仓库] → 一次性成本；以后可换成子集化。
 - [平台缓存旧图] → 地址带 `?v=` 内容哈希；已缓存的旧预览要等各平台下次抓取。
+- [UA 名单不全，或某个平台改了 UA] → 该平台退回方图，预览变小但不坏。名单是 `LINK_PREVIEW_CRAWLERS`，加一个名字加一条测试。
+- [微信的抓取器在生产域名上取不到图] → 方图只有 4 KB；preview 在 workers.dev，未必连得上，所以 preview 上没出图不能证明标签有问题，上线后在 `fetchr.hanyang.app` 上再测。
 - [`/terms` 沿用全站标题，与页面主题略不符] → 接受，后续单独处理。
 - [Satori 对元素树的格式要求苛刻（如空 `children`）] → 辅助函数统一构造，单测覆盖。
 
@@ -128,8 +144,8 @@
 
 1. 按 tasks.md 的切片实现，分支名 `feat/share-previews`，一个切片一个可单独评审的提交。
 2. PR 的 CI 全绿（`verify`、`bundle:check`、`generate:check`、e2e、OSV、dependency-review）；基线上调在 PR 描述里写明理由。
-3. PR 的 preview 部署出来后做真机验证：在手机微信里用二维码打开 preview 地址（不要点聊天里的纯链接），点「…」→「分享到朋友圈」，别发表，看预览里的标题与缩略图；再用「收藏」进入重复一次。微信按 URL 缓存，反复测试时给地址加不同的 `&t=1`、`&t=2`。另在 Telegram、Slack、iMessage、X 里贴链接看 OG 预览，用 QQ 浏览器分享到微信好友看卡片。
-4. 方图没出现：已删除，经过见 D9。
+3. PR 的 preview 部署出来后做真机验证：在手机的 Safari 或 Chrome 里打开 preview 地址，点分享 → 微信 → 朋友圈，别发表，看标题与缩略图，应是方图（标志和字标）。微信按 URL 缓存，反复测试时给地址加不同的 `?t=1`、`?t=2`。另在 Telegram、Slack、iMessage、X 里贴链接，应看到宽图；用 `curl -A Twitterbot` 与不带 UA 的 `curl` 对照标签。微信内置浏览器里分享只会是纯链接（见 D13 末尾），不是验证项。
+4. 屏外方图没出现：已删除，经过见 D9；方图改走 `og:image`，见 D13。
 5. 合并后走现有的 main 推送流程（preview 冒烟、100%、线上冒烟、失败自动回滚）。
 6. 回滚：revert。产物是静态资源加 head 标签，没有数据迁移。
 
@@ -137,6 +153,7 @@
 
 - 自写量化器的实际体积是否满足 25 KB 与 8 KB 的上限（实现后实测，阈值可据此调整）。
 - 字体是否改为子集化（仅当 630 KB 被嫌大时）。
+- 生产域名 `fetchr.hanyang.app` 上，微信的抓取器能否取到 `square.png`（上线后用 Safari 或 Chrome 分享到朋友圈确认）。
 
 ## 附录 A：定稿的 SVG 源
 

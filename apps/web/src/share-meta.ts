@@ -16,6 +16,7 @@ interface ShareImage {
 interface ShareImages {
   readonly ogZh: ShareImage
   readonly ogEn: ShareImage
+  readonly square: ShareImage
 }
 
 export type MetaTag =
@@ -28,20 +29,31 @@ export interface ShareMetaInput {
   readonly copy: PageCopy
   /** The request's origin, such as `https://fetchr.hanyang.app`. Null when it could not be read. */
   readonly origin: string | null
+  /** True when a known link-preview crawler is asking: it gets the wide card, everyone else the square. */
+  readonly crawler: boolean
   readonly pathname: string
   readonly images: ShareImages
 }
 
 const ogLocale: Record<Locale, string> = { zh: "zh_CN", en: "en_US" }
 
+/** The square shows only the logo and the wordmark, so its alt text is the brand name in both languages. */
+const SQUARE_ALT = "Fetchr"
+
 const imageUrl = (origin: string, image: ShareImage): string => `${origin}${image.path}?v=${image.version}`
 
 /**
  * The title and the meta tags for one page. With no origin the tags that need an absolute address (og:url and
  * the og:image group) are left out; a relative address would be worse than none, because crawlers do not resolve it.
+ *
+ * The share image depends on who asks. A crawler that draws wide link cards gets the 1200x630 card of the page's
+ * language. Anyone else gets the 600x600 square. That default is for WeChat: it crops the og:image of a Moments
+ * card to a centred square, which leaves a square untouched, and its fetcher does not name itself, so it cannot be
+ * picked out and can only be served by default.
  */
-export function shareMeta({ locale, copy, origin, pathname, images }: ShareMetaInput): MetaTag[] {
-  const card = locale === "en" ? images.ogEn : images.ogZh
+export function shareMeta({ locale, copy, origin, crawler, pathname, images }: ShareMetaInput): MetaTag[] {
+  const wide = locale === "en" ? images.ogEn : images.ogZh
+  const card = crawler ? wide : images.square
   const tags: MetaTag[] = [
     { title: copy.title },
     { name: "description", content: copy.description },
@@ -58,24 +70,27 @@ export function shareMeta({ locale, copy, origin, pathname, images }: ShareMetaI
       { property: "og:image:type", content: "image/png" },
       { property: "og:image:width", content: String(card.width) },
       { property: "og:image:height", content: String(card.height) },
-      { property: "og:image:alt", content: copy.shareImageAlt },
+      { property: "og:image:alt", content: crawler ? copy.shareImageAlt : SQUARE_ALT },
     )
   }
   // X falls back to the og tags above for the title, description and image, so only the card type is needed.
-  tags.push({ name: "twitter:card", content: "summary_large_image" })
+  tags.push({ name: "twitter:card", content: crawler ? "summary_large_image" : "summary" })
   return tags
 }
 
 export interface RequestFacts {
   readonly origin: string | null
+  /** True when the user agent is a known link-preview crawler. See `isLinkPreviewCrawler`. */
+  readonly crawler: boolean
 }
 
-/** What a page knows when the request cannot be read: no address to build absolute URLs from. */
-export const NO_REQUEST_FACTS: RequestFacts = { origin: null }
+/** What a page knows when the request cannot be read: no address to build absolute URLs from, and not a crawler. */
+export const NO_REQUEST_FACTS: RequestFacts = { origin: null, crawler: false }
 
 /**
  * What the share tags need from the request. Share metadata must never take a page down, so if `read` throws
- * (no request in scope, an RPC that failed) the answer is no origin: the page loses its image tags and nothing else.
+ * (no request in scope, an RPC that failed) the answer is no origin and no crawler: the page loses its image
+ * tags and nothing else.
  */
 export function readRequestFacts(read: () => RequestFacts): RequestFacts {
   try {
@@ -83,4 +98,16 @@ export function readRequestFacts(read: () => RequestFacts): RequestFacts {
   } catch {
     return NO_REQUEST_FACTS
   }
+}
+
+/**
+ * The crawlers that build link previews and draw wide cards, by the name each puts in its user agent. Apple
+ * Messages is reported to send an old Safari string with `facebookexternalhit` and `Twitterbot` appended, so it
+ * matches too. WeChat is not here and cannot be: its fetcher does not say who it is, and the requests that look
+ * like it come with ordinary phone and desktop browsers' strings. Whatever is not on this list gets the square.
+ */
+const LINK_PREVIEW_CRAWLERS = /facebookexternalhit|facebot|twitterbot|slackbot|telegrambot|whatsapp|discordbot|linkedinbot|applebot/i
+
+export function isLinkPreviewCrawler(userAgent: string | null | undefined): boolean {
+  return LINK_PREVIEW_CRAWLERS.test(userAgent ?? "")
 }

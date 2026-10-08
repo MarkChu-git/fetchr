@@ -27,8 +27,21 @@ const titleOf = (html: string): string | undefined => {
   return raw === undefined ? undefined : decode(raw)
 }
 
-async function page(request: APIRequestContext, path: string): Promise<{ html: string; tags: Meta[] }> {
-  const response = await request.get(path)
+/** A crawler that draws wide link cards. */
+const CRAWLER = "Twitterbot/1.0"
+/** WeChat's in-app browser. Its link fetcher does not name itself, so the server cannot tell it from this or any other browser. */
+const WECHAT =
+  "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 MicroMessenger/8.0.50(0x18003231) NetType/WIFI Language/zh_CN"
+
+/** The request options that send this user agent, or none to keep the client's own. */
+const asAgent = (userAgent?: string): { headers?: Record<string, string> } => (userAgent === undefined ? {} : { headers: { "user-agent": userAgent } })
+
+/** Every user agent and path pair, for tests that check them all at once. */
+const visitsOf = (userAgents: readonly (string | undefined)[], paths: readonly string[]): { userAgent: string | undefined; path: string }[] =>
+  userAgents.flatMap((userAgent) => paths.map((path) => ({ userAgent, path })))
+
+async function page(request: APIRequestContext, path: string, userAgent?: string): Promise<{ html: string; tags: Meta[] }> {
+  const response = await request.get(path, asAgent(userAgent))
   expect(response.status(), path).toBe(200)
   const html = await response.text()
   return { html, tags: metas(html) }
@@ -45,8 +58,8 @@ async function pngSize(request: APIRequestContext, url: string): Promise<{ statu
   }
 }
 
-test("the Chinese home page carries its title, tags and a share image that can be fetched", async ({ request, baseURL }) => {
-  const { html, tags } = await page(request, "/")
+test("a crawler gets the Chinese home page with its title, tags and the wide share image", async ({ request, baseURL }) => {
+  const { html, tags } = await page(request, "/", CRAWLER)
   expect(titleOf(html)).toBe("Fetchr：粘贴链接，下载视频和图片")
   expect(first(tags, "og:title")).toBe("Fetchr：粘贴链接，下载视频和图片")
   expect(first(tags, "og:type")).toBe("website")
@@ -61,8 +74,8 @@ test("the Chinese home page carries its title, tags and a share image that can b
   expect(await pngSize(request, image)).toEqual({ status: 200, type: "image/png", width: 1200, height: 630 })
 })
 
-test("the English home page uses the English title, image and a url that keeps ?lang=en", async ({ request, baseURL }) => {
-  const { html, tags } = await page(request, "/?lang=en")
+test("a crawler gets the English title, the English wide image and a url that keeps ?lang=en", async ({ request, baseURL }) => {
+  const { html, tags } = await page(request, "/?lang=en", CRAWLER)
   expect(titleOf(html)).toBe("Fetchr: paste a link, download videos and images")
   expect(first(tags, "og:locale")).toBe("en_US")
   expect(first(tags, "og:url")).toBe(`${baseURL}/?lang=en`)
@@ -74,6 +87,26 @@ test("the English home page uses the English title, image and a url that keeps ?
   expect(await pngSize(request, image)).toEqual({ status: 200, type: "image/png", width: 1200, height: 630 })
 })
 
+test("everyone else, WeChat's browser included, gets the square share image and a summary card", async ({ request, baseURL }) => {
+  await Promise.all(
+    visitsOf([undefined, WECHAT], ["/", "/?lang=en"]).map(async ({ userAgent, path }) => {
+      const { tags } = await page(request, path, userAgent)
+      const label = `${path} as ${userAgent ?? "the default client"}`
+      expect(first(tags, "twitter:card"), label).toBe("summary")
+      expect([first(tags, "og:image:width"), first(tags, "og:image:height"), first(tags, "og:image:type")], label).toEqual(["600", "600", "image/png"])
+      const image = first(tags, "og:image") ?? ""
+      expect(image, label).toMatch(new RegExp(`^${baseURL}/share/square\\.png\\?v=[0-9a-f]{8}$`))
+      expect(await pngSize(request, image), label).toEqual({ status: 200, type: "image/png", width: 600, height: 600 })
+    }),
+  )
+})
+
+test("the page tells caches that its share tags depend on the user agent", async ({ request }) => {
+  const agents = [undefined, CRAWLER]
+  const responses = await Promise.all(agents.map((userAgent) => request.get("/", asAgent(userAgent))))
+  responses.forEach((response, i) => expect(response.headers()["vary"] ?? "", agents[i] ?? "the default client").toMatch(/user-agent/i))
+})
+
 test("the terms page keeps the site title and carries its own path in og:url", async ({ request, baseURL }) => {
   const zh = await page(request, "/terms")
   expect(titleOf(zh.html)).toBe("Fetchr：粘贴链接，下载视频和图片")
@@ -83,12 +116,12 @@ test("the terms page keeps the site title and carries its own path in og:url", a
 })
 
 test("no share tag appears twice", async ({ request }) => {
-  const paths = ["/", "/?lang=en", "/terms"]
-  const pages = await Promise.all(paths.map((path) => page(request, path)))
+  const visits = visitsOf([undefined, CRAWLER], ["/", "/?lang=en", "/terms"])
+  const pages = await Promise.all(visits.map(({ userAgent, path }) => page(request, path, userAgent)))
   pages.forEach(({ tags }, i) => {
     const seen = new Map<string, number>()
     for (const tag of tags) seen.set(tag.key, (seen.get(tag.key) ?? 0) + 1)
-    for (const [key, count] of seen) expect(count, `${paths[i]} ${key}`).toBe(1)
+    for (const [key, count] of seen) expect(count, `${visits[i]?.path} ${key} as ${visits[i]?.userAgent ?? "the default client"}`).toBe(1)
   })
 })
 

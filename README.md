@@ -154,6 +154,8 @@ bun run --cwd apps/web og:fonts            # fetch the font slices a new charact
 
 Never edit the generated files by hand: `apps/web/public/share/og-zh.png`, `og-en.png` and `square.png`, `apps/web/public/favicon-32.png` and `apple-touch-icon.png`, and `apps/web/src/share-assets.gen.ts`, which records the content hash that each image URL carries as `?v=`. After changing the copy, the logo or a template, run `bun run generate` and commit the result.
 
+Which image a request gets depends on its `User-Agent`. The crawlers that draw wide link cards (Facebook, X, Slack, Telegram, WhatsApp, Discord, LinkedIn and Apple) get the 1200×630 card of the page's language. Every other request gets `square.png`. That default is for WeChat: a Moments card crops its image to a centred square, which leaves a square untouched, and WeChat's fetcher does not name itself, so it cannot be picked out. The list is `LINK_PREVIEW_CRAWLERS` in `apps/web/src/share-meta.ts`, and the page answers with `Vary: User-Agent`.
+
 The Chinese text is set in Noto Sans SC, licensed under the SIL Open Font License 1.1. The slices the cards need are committed in `apps/web/scripts/og/fonts/`, next to `OFL.txt` and `fonts.lock.json`, which holds their checksums. The generator, the renderers and these fonts are build tools. The boundary scan (`bun run arch`) rejects shipped source that imports them, and none of them reaches `dist`.
 
 ## Configuration
