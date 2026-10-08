@@ -165,7 +165,11 @@ export function lockfileViolations(present: readonly string[]): Violation[] {
 }
 
 export function typecheckProjectPaths(root: string): string[] {
-  const projects = new Set<string>(["scripts/ci/tsconfig.json", "bench/tsconfig.json"])
+  const projects = new Set<string>([
+    "scripts/ci/tsconfig.json",
+    "bench/tsconfig.json",
+    "performance/tsconfig.json",
+  ])
   for (const file of walk(root)) {
     const rel = relativePosix(root, file)
     if (!rel.endsWith("/package.json")) continue

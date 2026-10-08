@@ -141,7 +141,7 @@ test("this repository passes the boundary scan", () => {
   expect(scanRepository(root)).toEqual([])
 })
 
-test("typecheck lists every workspace package and the ci scripts", () => {
+test("typecheck lists every workspace package, the ci scripts, and the performance scripts", () => {
   const projects = typecheckProjectPaths(root)
   expect(projects).toContain("apps/web/tsconfig.json")
   expect(projects).toContain("packages/core/tsconfig.json")
@@ -150,5 +150,6 @@ test("typecheck lists every workspace package and the ci scripts", () => {
   expect(projects).toContain("packages/platform/tiktok/tsconfig.json")
   expect(projects).toContain("packages/platform/fixture/tsconfig.json")
   expect(projects).toContain("scripts/ci/tsconfig.json")
+  expect(projects).toContain("performance/tsconfig.json")
   expect(projects.includes("tsconfig.json")).toBe(false)
 })
