@@ -1,16 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img">
   <title>Fetchr</title>
   <style>
     .bg { fill: #25252a }
     .fg { fill: #f3f3f5 }
+    .dot { fill: #e9592a }
     @media (prefers-color-scheme: dark) {
       .bg { fill: #f3f3f5 }
       .fg { fill: #17171b }
     }
   </style>
-  <rect class="bg" width="32" height="32" rx="8"/>
+  <rect class="bg" width="64" height="64" rx="15"/>
   <g class="fg">
-    <rect x="8.4" y="6.8" width="3.1" height="18.4" rx="1.05"/>
-    <rect x="10.6" y="6.8" width="13.2" height="9.2" rx="1.45"/>
+    <rect x="17" y="11" width="11" height="42" rx="5.5"/>
+    <rect x="17" y="11" width="30" height="10" rx="5"/>
+    <rect x="17" y="27" width="22" height="10" rx="5"/>
   </g>
+  <circle class="dot" cx="40" cy="47.5" r="5.5"/>
 </svg>

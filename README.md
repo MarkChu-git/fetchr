@@ -141,6 +141,23 @@ bun run build         # build the Worker
 
 Run `verify:fast` after every meaningful change. Run `verify` and `policy` before calling a task done. `arch` is the module boundary scan; dependency-cruiser joins once it supports the TypeScript 7 API.
 
+## Share Previews
+
+The images behind link previews (Open Graph and Twitter cards) are drawn at build time with `satori` and `@resvg/resvg-wasm`, then committed. The Worker serves them as plain static files and never draws anything. The text comes from `apps/web/src/i18n.ts` and the mark from `apps/web/public/logo.svg`.
+
+```sh
+bun run generate                           # redraw the share images and icons, then rebuild the route tree
+bun run generate:check                     # CI: fail when they are stale. Compares hashes, draws nothing
+bun run --cwd apps/web og --verify-render  # local only: draw again and compare with the committed bytes
+bun run --cwd apps/web og:fonts            # fetch the font slices a new character needs
+```
+
+Never edit the generated files by hand: `apps/web/public/share/og-zh.png`, `og-en.png` and `square.png`, `apps/web/public/favicon-32.png` and `apple-touch-icon.png`, and `apps/web/src/share-assets.gen.ts`, which records the content hash that each image URL carries as `?v=`. After changing the copy, the logo or a template, run `bun run generate` and commit the result.
+
+Which image a request gets depends on its `User-Agent`. The crawlers that draw wide link cards (Facebook, X, Slack, Telegram, WhatsApp, Discord, LinkedIn and Apple) get the 1200×630 card of the page's language. Every other request gets `square.png`. That default is for WeChat: a Moments card crops its image to a centred square, which leaves a square untouched, and no user agent is documented for WeChat's fetcher, so it cannot be picked out. The list is `LINK_PREVIEW_CRAWLERS` in `apps/web/src/share-meta.ts`; to show another platform the wide card, add its name there with a test. Every document answer, the not-found page included, carries `Vary: User-Agent`. To see the wide card's tags yourself, ask as a crawler: `curl -A Twitterbot <url>`.
+
+The Chinese text is set in Noto Sans SC, licensed under the SIL Open Font License 1.1. The slices the cards need are committed in `apps/web/scripts/og/fonts/`, next to `OFL.txt` and `fonts.lock.json`, which holds their checksums. The generator, the renderers and these fonts are build tools. The boundary scan (`bun run arch`) rejects shipped source that imports them, and none of them reaches `dist`.
+
 ## Configuration
 
 `FETCHR_PROXY_SECRET` signs download URLs. Use at least 16 characters. Generate a value with `openssl rand -hex 32`, and use a different value for each deploy. `apps/web/.dev.vars.example` leaves the variable empty.

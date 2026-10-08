@@ -8,12 +8,14 @@
 | --- | --- | --- |
 | ci.yml | verify(lint/typecheck/test/build/OSV/semgrep/gitleaks/actionlint/zizmor)+ e2e(Playwright 本地 preview) | 阻塞 |
 | performance.yml | `bun run bench`(阻塞档 >10% 回归失败)+ `bun run bundle:check`(绝对上限 + 相对基线) | 阻塞；信息档只警告 |
-| compatibility.yml | `bun run generate:check`(routeTree 漂移)+ `bun run compat`(OpenAPI/数据库如实报跳过) | 阻塞 |
+| compatibility.yml | `bun run generate:check`(routeTree 与分享资源漂移)+ `bun run compat`(OpenAPI/数据库如实报跳过) | 阻塞 |
 | preview.yml | cf 部署 preview 版本 → 评论 URL → Playwright/Lighthouse/k6 smoke 全部打 preview | 阻塞 |
 
 bench 的阻塞档:`detectUrls` 和代理令牌 sign+verify。亚微秒的 match 基准噪声大，只做信息档。
 
-bundle 预算基线（gzip):总量 514KB、JS 356KB、主入口 104KB、最大 chunk 134KB；绝对上限约 +25%，相对基线涨 5% 警告、10% 失败。基线用 `bun run bundle:check -- --write` 更新,bench 基线用 `bun run bench -- --write`。
+`generate:check` 除了 routeTree，也守分享资源：先比对分享图输入的哈希与已提交 PNG 的内容哈希（不渲染，所以在 macOS 和 Linux 上结论一致），再构建并 diff `routeTree.gen.ts`。文案、logo 或模板改了而图没重画，它就失败，并提示运行 `bun run generate`。
+
+bundle 预算基线（gzip):总量 561KB、JS 370KB、主入口 104KB、最大 chunk 134KB；绝对上限 650KB、430KB、130KB、170KB，相对基线涨 5% 警告、10% 失败。基线用 `bun run bundle:check -- --write` 更新,bench 基线用 `bun run bench -- --write`。分享图与图标 PNG 也在 `dist/client` 里，计入总量（PNG 几乎压不动），所以加分享图时总量基线上调了约 36KB；这次基线共上调约 47KB，多出的约 11KB 是 main 上本来就有的漂移（本地实测比提交的基线高），PR 描述里分开写了。
 
 Lighthouse 打 preview URL（不再打 localhost)，三跑取中位。资源预算是硬门（JS/CSS/总量/零第三方请求）;LCP/CLS/TBT 里 LCP 和 TBT 是警告，CLS >0.25 才算失败。
 

@@ -137,6 +137,23 @@ bun run build         # 构建 Worker
 
 每次有效改动后跑 `verify:fast`，宣布完成前跑 `verify` 和 `policy`。`arch` 是模块边界扫描；dependency-cruiser 等它支持 TypeScript 7 的 API 后接入。
 
+## 分享预览
+
+链接预览（Open Graph 与 Twitter 卡片）用的图，在构建时用 `satori` 和 `@resvg/resvg-wasm` 画好，然后提交进仓库。Worker 只把它们当静态文件发出去，自己不画。文案来自 `apps/web/src/i18n.ts`，图标来自 `apps/web/public/logo.svg`。
+
+```sh
+bun run generate                           # 重画分享图和图标，再重建路由树
+bun run generate:check                     # CI：过期就失败。比的是哈希，不画图
+bun run --cwd apps/web og --verify-render  # 仅本地：重画一遍，与已提交的字节逐个比较
+bun run --cwd apps/web og:fonts            # 新增了字符时，补取需要的字体切片
+```
+
+下面这些是生成出来的文件，不要手改：`apps/web/public/share/` 下的 `og-zh.png`、`og-en.png` 和 `square.png`，`apps/web/public/` 下的 `favicon-32.png` 与 `apple-touch-icon.png`，以及 `apps/web/src/share-assets.gen.ts`（它记着每张图的内容哈希，图片 URL 里的 `?v=` 就是它）。改了文案、logo 或模板之后，运行 `bun run generate` 并提交结果。
+
+一个请求拿到哪张图，看它的 `User-Agent`。会画宽卡片的链接预览爬虫（Facebook、X、Slack、Telegram、WhatsApp、Discord、LinkedIn 和 Apple）拿当前语言的 1200×630 宽图，其余请求一律拿 `square.png`。这个默认是为微信留的：朋友圈卡片会把图居中裁成方形，方图不受影响；而微信的抓取器没有公开的 UA，认不出来，只能靠默认。名单是 `apps/web/src/share-meta.ts` 里的 `LINK_PREVIEW_CRAWLERS`，想让别的平台看到宽图，就把它的名字加进去并补一条测试。所有文档响应，包括 404 页面，都带 `Vary: User-Agent`。想自己看宽图那一套标签，可以装成爬虫：`curl -A Twitterbot <网址>`。
+
+中文用 Noto Sans SC，许可证是 SIL Open Font License 1.1。卡片用到的切片随仓库提交，放在 `apps/web/scripts/og/fonts/`，旁边有 `OFL.txt` 和记录校验和的 `fonts.lock.json`。生成器、渲染库和这些字体都只用于构建：边界扫描（`bun run arch`）会拒绝交付代码引用它们，它们也不会进入 `dist`。
+
 ## 配置
 
 `FETCHR_PROXY_SECRET` 给下载地址签名。至少 16 个字符，用 `openssl rand -hex 32` 生成，每次部署换一个值。`apps/web/.dev.vars.example` 里该变量留空。

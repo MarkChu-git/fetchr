@@ -22,7 +22,13 @@ export function htmlLang(locale: Locale): "zh-CN" | "en" {
 
 export interface PageCopy {
   readonly publicLink: string
+  /** The page title. Also the og:title, and the title WeChat shows on a shared card. */
+  readonly title: string
   readonly description: string
+  /** The big line on the generated share cards. */
+  readonly shareHeadline: string
+  /** The og:image:alt text for the share cards. */
+  readonly shareImageAlt: string
   readonly pasteLabel: string
   readonly submit: string
   readonly extracting: string
@@ -76,7 +82,10 @@ const enPlatform = {
 const copy = {
   zh: {
     publicLink: "公开链接",
+    title: "Fetchr：粘贴链接，下载视频和图片",
     description: "粘贴链接，解析并下载社交媒体上的视频、图片和音频。",
+    shareHeadline: "粘贴链接，下载视频和图片",
+    shareImageAlt: "Fetchr 的粘贴链接输入框与解析按钮，支持小红书、抖音、Instagram、哔哩哔哩、YouTube 和 X",
     pasteLabel: "粘贴链接",
     submit: "解析",
     extracting: "正在解析",
@@ -104,7 +113,11 @@ const copy = {
   },
   en: {
     publicLink: "Public link",
+    title: "Fetchr: paste a link, download videos and images",
     description: "Paste a link to extract and download videos, images, and audio from social media.",
+    shareHeadline: "Paste a link, save the media",
+    shareImageAlt:
+      "Fetchr's paste-link field and Extract button, supporting Xiaohongshu, Douyin, Instagram, Bilibili, YouTube and X",
     pasteLabel: "Paste link",
     submit: "Extract",
     extracting: "Extracting",

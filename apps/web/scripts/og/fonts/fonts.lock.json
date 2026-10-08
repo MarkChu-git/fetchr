@@ -1,0 +1,103 @@
+{
+  "package": "@fontsource/noto-sans-sc",
+  "version": "5.3.0",
+  "license": "OFL-1.1",
+  "files": [
+    {
+      "file": "noto-sans-sc-105-500-normal.woff",
+      "weight": 500,
+      "slice": 105,
+      "sha256": "bdce158e7b2c680d85b7206738a7ce3795370540f5d94ee4515a8055165a9bb3"
+    },
+    {
+      "file": "noto-sans-sc-106-500-normal.woff",
+      "weight": 500,
+      "slice": 106,
+      "sha256": "2d9feddef1fcb5fbad5505b0f1ec43ab108923c6031a31c3f5766c9ece446748"
+    },
+    {
+      "file": "noto-sans-sc-108-500-normal.woff",
+      "weight": 500,
+      "slice": 108,
+      "sha256": "4a0963106c3c926082856a597d65c7cb8664413646d33010dfa6161a0a905f69"
+    },
+    {
+      "file": "noto-sans-sc-115-500-normal.woff",
+      "weight": 500,
+      "slice": 115,
+      "sha256": "30dcc1f6f10b5118fb833defc941c0b29c55f5d4c82deaa39bfa52261bec92d3"
+    },
+    {
+      "file": "noto-sans-sc-116-500-normal.woff",
+      "weight": 500,
+      "slice": 116,
+      "sha256": "825e2b3628ca9743d5b2c2fde239e6f52f377f074070d2b444572c675a0f84ec"
+    },
+    {
+      "file": "noto-sans-sc-117-500-normal.woff",
+      "weight": 500,
+      "slice": 117,
+      "sha256": "11dd5789de2a1bb5a8818d42b57039de31cd3fa137d49069c3a6e3a3c9ce118e"
+    },
+    {
+      "file": "noto-sans-sc-118-500-normal.woff",
+      "weight": 500,
+      "slice": 118,
+      "sha256": "fc72ca734914d414cded5e93fc57928eb329963d2b30503c07c9a68acb220d18"
+    },
+    {
+      "file": "noto-sans-sc-119-500-normal.woff",
+      "weight": 500,
+      "slice": 119,
+      "sha256": "12790f01775c23eb86b6ebc5196ec42cb5eebb58885f981119a153d7ee66da0e"
+    },
+    {
+      "file": "noto-sans-sc-105-700-normal.woff",
+      "weight": 700,
+      "slice": 105,
+      "sha256": "2e13b8149cab047d2e0d2c104fe696c0b921a56aae59a83169c46f6f6c3f461e"
+    },
+    {
+      "file": "noto-sans-sc-106-700-normal.woff",
+      "weight": 700,
+      "slice": 106,
+      "sha256": "aa7d7b77d1499fea636302be6d493d2a02bc66d1c7238198fbc39c865b20a311"
+    },
+    {
+      "file": "noto-sans-sc-108-700-normal.woff",
+      "weight": 700,
+      "slice": 108,
+      "sha256": "5790e8782390b470ad91afdf5c4870db0ed87b9c1a435ee60c2b7953f35c1922"
+    },
+    {
+      "file": "noto-sans-sc-115-700-normal.woff",
+      "weight": 700,
+      "slice": 115,
+      "sha256": "e72a22bc3180a71c2f8e7d56160b77058a3b5005782079279514ab02738e551a"
+    },
+    {
+      "file": "noto-sans-sc-116-700-normal.woff",
+      "weight": 700,
+      "slice": 116,
+      "sha256": "4aeb3250ed36506b4d6cd422658aeee0cc2d15cac49c8fd362bf3cf9deb2bf63"
+    },
+    {
+      "file": "noto-sans-sc-117-700-normal.woff",
+      "weight": 700,
+      "slice": 117,
+      "sha256": "7e4e4cd3841f00a8da0664dde2631e2fea7c58816e5acad4e3876d347ac685f2"
+    },
+    {
+      "file": "noto-sans-sc-118-700-normal.woff",
+      "weight": 700,
+      "slice": 118,
+      "sha256": "ca9c3a6ed112d6a9f44bec03458303953e03fc3463b7a039cd757401d5d97701"
+    },
+    {
+      "file": "noto-sans-sc-119-700-normal.woff",
+      "weight": 700,
+      "slice": 119,
+      "sha256": "f869836abaa064475230bcccd16d1412284b688518427dfd37678fa6130e52e8"
+    }
+  ]
+}

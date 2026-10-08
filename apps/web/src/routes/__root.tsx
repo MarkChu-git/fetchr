@@ -1,6 +1,8 @@
 import { Theme } from "@astryxdesign/core/theme"
 import { stoneTheme } from "@astryxdesign/theme-stone/built"
 import { HeadContent, Scripts, createRootRoute, useRouterState } from "@tanstack/react-router"
+import { createServerFn } from "@tanstack/react-start"
+import { getRequestHeader, getRequestUrl } from "@tanstack/react-start/server"
 import type { ReactNode } from "react"
 import "@astryxdesign/core/reset.css"
 import "@astryxdesign/theme-stone/theme.css"
@@ -8,10 +10,37 @@ import "@fontsource/figtree/400.css"
 import "@fontsource/figtree/500.css"
 import "@fontsource/figtree/600.css"
 import { htmlLang, localeFromSearch, pageCopy } from "../i18n"
+import { shareAssets } from "../share-assets.gen"
+import { NO_REQUEST_FACTS, isLinkPreviewCrawler, readRequestFacts, shareMeta, type RequestFacts } from "../share-meta"
 import "../styles.css"
 
+/**
+ * What the share tags need to know about the request. It has to be read inside the request, where Workers
+ * inject it. `readRequestFacts` keeps a failure here from reaching the page.
+ */
+const loadRequestFacts = createServerFn({ method: "GET" }).handler(
+  (): RequestFacts =>
+    readRequestFacts(() => ({ origin: getRequestUrl().origin, crawler: isLinkPreviewCrawler(getRequestHeader("user-agent")) })),
+)
+
 export const Route = createRootRoute({
-  head: ({ match }) => {
+  // The share image depends on the user agent, so every document answer says so, the not-found page included. A header
+  // set from the loader would be lost on a non-200 answer; this one is not. Cloudflare's own cache does not key on Vary
+  // and does not cache HTML unless a rule says so, so this is for other proxies, and for whoever adds such a rule:
+  // it has to key on the user agent too.
+  headers: () => ({ vary: "User-Agent" }),
+  // The origin and the user agent cannot change while the page is open, so they never go stale. The router keeps the root
+  // match across navigations anyway; this keeps it from asking the server again if its defaults ever change.
+  staleTime: Infinity,
+  // A failed call, which can only happen over the network on the client, costs the page its image tags and nothing more.
+  loader: async (): Promise<RequestFacts> => {
+    try {
+      return await loadRequestFacts()
+    } catch {
+      return NO_REQUEST_FACTS
+    }
+  },
+  head: ({ match, matches, loaderData }) => {
     // The root route has no search validator, so search is untyped here.
     const locale = localeFromSearch((match.search as { lang?: string }).lang)
     return {
@@ -21,11 +50,15 @@ export const Route = createRootRoute({
           name: "viewport",
           content: "width=device-width, initial-scale=1",
         },
-        { title: "Fetchr" },
-        {
-          name: "description",
-          content: pageCopy(locale).description,
-        },
+        // The root match's own pathname is not the page's; the deepest match is.
+        ...shareMeta({
+          locale,
+          copy: pageCopy(locale),
+          origin: loaderData?.origin ?? null,
+          crawler: loaderData?.crawler ?? false,
+          pathname: matches.at(-1)?.pathname ?? "/",
+          images: shareAssets,
+        }),
       ],
       links: [
         // SVG stays sharp in the tab. The PNG covers clients that ignore SVG icons.
